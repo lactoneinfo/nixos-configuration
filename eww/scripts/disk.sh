@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 # 各パーティションの使用状況をJSON配列で。物理FSのみ(tmpfs等は除外)。
+# /mnt/obsidian・/mnt/zoteroはsystemd automount(60秒アイドルで自動アンマウント)。
+# dfは現在の実マウント一覧を見るだけでアクセスを発生させないため、アイドル
+# アンマウント後は何もしないと再マウントされずタイル上から消えたままになる。
+# statで軽く触れて自動マウントを起こしてからdfする。
+for p in /mnt/obsidian /mnt/zotero; do
+  [ -d "$p" ] && timeout 3 stat "$p" >/dev/null 2>&1
+done
+
 df -B1 --output=target,fstype,size,used,pcent 2>/dev/null | tail -n +2 | \
 while read -r target fstype size used pcent; do
   case "$fstype" in

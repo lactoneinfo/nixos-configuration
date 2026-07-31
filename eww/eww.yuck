@@ -206,20 +206,22 @@
       (box :orientation "h" :space-evenly false
         (label :class "section-h" :halign "start" :hexpand true :text "SPEED TEST")
         (box :class "retry-btn" :orientation "h" :space-evenly false :spacing 3 :halign "end"
-             :onclick "echo x > /tmp/eww-speedtest-trigger"
-          (label :class "retry-icon" :text "⟳")
-          (label :class "retry-text" :text "retry")))
-      (box :orientation "h" :space-evenly false :halign "start" :spacing 14
-        (box :orientation "v" :space-evenly false :halign "center"
+             :cursor "pointer" :onclick "echo x > /tmp/eww-speedtest-trigger"
+          (label :class "retry-icon" :cursor "pointer" :onclick "echo x > /tmp/eww-speedtest-trigger" :text "⟳")
+          (label :class "retry-text" :cursor "pointer" :onclick "echo x > /tmp/eww-speedtest-trigger" :text "retry")))
+      ;; 横に空いていたスペースを使い、数値+last testを1行にまとめて縦を圧縮。
+      (box :orientation "h" :space-evenly false :halign "start" :spacing 18
+        (box :orientation "h" :space-evenly false :spacing 4 :valign "center"
           (label :class "speed-num dn" :text "${speedtest.down}")
-          (label :class "speed-unit" :text "↓ Mbps"))
-        (box :orientation "v" :space-evenly false :halign "center"
+          (label :class "speed-unit" :text "↓Mbps"))
+        (box :orientation "h" :space-evenly false :spacing 4 :valign "center"
           (label :class "speed-num up" :text "${speedtest.up}")
-          (label :class "speed-unit" :text "↑ Mbps"))
-        (box :orientation "v" :space-evenly false :halign "center"
+          (label :class "speed-unit" :text "↑Mbps"))
+        (box :orientation "h" :space-evenly false :spacing 4 :valign "center"
           (label :class "speed-num ping" :text "${speedtest.ping}")
-          (label :class "speed-unit" :text "ping ms")))
-      (label :class "loc-note" :halign "start" :text "last test @ ${speedtest.ts} · ${net.iface} ${net.ip}")
+          (label :class "speed-unit" :text "ms ping"))
+        (label :class "loc-note" :halign "end" :hexpand true :valign "center"
+               :text "last test @ ${speedtest.ts} · ${net.iface} ${net.ip}"))
       (label :class "section-h" :halign "start" :text "LIVE PER-PROCESS (nethogs)")
       (box :orientation "v" :space-evenly false :spacing 1
         (for np in netprocs

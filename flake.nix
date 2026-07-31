@@ -21,6 +21,10 @@
             home-manager.useGlobalPkgs = true;
             home-manager.useUserPackages = true;
             home-manager.users.nixos = import ./home.nix;
+            # fcitx5は起動のたびに~/.config/fcitx5/profileを自分で書き換えるため、
+            # home-managerが管理するシンボリックリンクと毎回衝突してrebuildが
+            # 失敗していた。衝突時は手動対応を待たず自動でバックアップして進める。
+            home-manager.backupFileExtension = "hm-backup";
           }
         ];
       };

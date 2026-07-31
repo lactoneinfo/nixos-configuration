@@ -324,8 +324,10 @@ in
       # その場合cut -cが日本語等マルチバイト文字の途中でバイト単位に切って
       # 不正なUTF-8になり、waybar(GTK markup)ごとクラッシュした実例がある。
       # LC_ALLを明示してcutに文字単位で切らせることで回避する。
-      title=$(${pkgs.playerctl}/bin/playerctl metadata title 2>/dev/null | LC_ALL=en_US.UTF-8 cut -c1-24)
-      artist=$(${pkgs.playerctl}/bin/playerctl metadata artist 2>/dev/null)
+      # "/\をエスケープせずJSONへ埋め込むと、曲名にその文字が入った瞬間に
+      # waybar側のJSONパースが壊れ、その後のクラッシュにつながった実例がある。
+      title=$(${pkgs.playerctl}/bin/playerctl metadata title 2>/dev/null | LC_ALL=en_US.UTF-8 cut -c1-24 | sed 's/\\/\\\\/g; s/"/\\"/g')
+      artist=$(${pkgs.playerctl}/bin/playerctl metadata artist 2>/dev/null | sed 's/\\/\\\\/g; s/"/\\"/g')
       printf '{"text":"♪ %s","tooltip":"%s - %s"}\n' "$title" "$title" "$artist"
     '';
   };

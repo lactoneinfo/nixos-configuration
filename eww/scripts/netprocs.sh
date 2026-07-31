@@ -15,6 +15,8 @@ last_start=$(echo "$raw" | grep -n "^Refreshing:" | tail -1 | cut -d: -f1)
 [ -z "$last_start" ] && { echo "[]"; exit 0; }
 block=$(echo "$raw" | tail -n +$((last_start + 1)))
 
+# 表示欄が1行分しか無く、複数出すと折り返してレイアウトが崩れるため、
+# 帯域が最も大きい1プロセスだけに絞る。
 echo "$block" | awk -F'\t' '
   /^unknown TCP/ { next }
   NF >= 3 {
@@ -22,10 +24,12 @@ echo "$block" | awk -F'\t' '
     sub(/\/[0-9]+\/[0-9]+$/, "", name)   # 末尾の /pid/uid を除去
     gsub(/.*\//, "", name)               # フルパスならbasenameだけに
     gsub(/"/, "", name)
-    total = $2 + $3
-    if (total > 0.01) {
-      printf "%s{\"name\":\"%s\",\"down\":%.0f,\"up\":%.0f}", (printed ? "," : ""), name, $3*1024, $2*1024
-      printed=1
-    }
+    down = $3*1024
+    up = $2*1024
+    total = down + up
+    if (total > 0.01) printf "%.0f\t%s\t%.0f\t%.0f\n", total, name, down, up
   }
-' | awk 'BEGIN{printf "["} {printf "%s", $0} END{print "]"}'
+' | sort -rn -k1,1 | head -1 | awk -F'\t' '
+  { printf "[{\"name\":\"%s\",\"down\":%s,\"up\":%s}]", $2, $3, $4; found=1 }
+  END { if (!found) print "[]" }
+'

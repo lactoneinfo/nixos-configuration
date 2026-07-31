@@ -75,6 +75,18 @@ in
 
         # AIエージェント作業画面(左Claude Code・右Obsidianグラフビュー)へ切替
         "$mod, A, exec, ~/.local/bin/agent-workspace.sh"
+      ]
+      # ワークスペース切替(Hyprlandのデフォルト例設定相当だが、この設定は
+      # ゼロから組んだためこれまで一切定義されていなかった)。
+      ++ (builtins.concatLists (map (n: [
+            "$mod, ${toString n}, workspace, ${toString n}"
+            "$mod SHIFT, ${toString n}, movetoworkspace, ${toString n}"
+          ]) (builtins.genList (i: i + 1) 9)));
+      # Super+左ドラッグ=移動、Super+右ドラッグ=リサイズ(Hyprlandのデフォルト
+      # 例設定相当。これもゼロから組んだ設定には元々含まれていなかった)。
+      bindm = [
+        "$mod, mouse:272, movewindow"
+        "$mod, mouse:273, resizewindow"
       ];
       # hyprpaper/waybar/fcitx5/ewwの起動は1本のオーケストレーションスクリプトに
       # 一本化(存在確認・待機・リトライ込み)。「再起動したら少し待てば全部正常に

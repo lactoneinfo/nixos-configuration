@@ -56,8 +56,11 @@ $glassBorder: rgba(255,255,255,0.14);
   margin-bottom: 3px;
 }
 
-.region-life { min-width: 460px; }
-.hero { min-width: 620px; }
+// 右パネルが画面右端をはみ出す実測不具合の修正(2026-08-01): ラベルの実文字数が
+// GTKの自然サイズを押し上げていた(特にAUDIO CHECKのデバイス名)。min-widthは下限に
+// すぎないため、実コンテンツ側(limit-width)も併せて絞って総幅を画面内に収めている。
+.region-life { min-width: 420px; }
+.hero { min-width: 600px; }
 .hero .kv { font-size: 10px; }
 
 // ---- clock (compact tile, paired with location) ----

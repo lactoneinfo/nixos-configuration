@@ -216,11 +216,11 @@
   (tile :title "AUDIO CHECK" :icon "audio"
     (box :orientation "v" :space-evenly false :spacing 4
       (box :orientation "v" :space-evenly false :spacing 1
-        (label :class "kv" :halign "start" :limit-width 42 :text "OUT ${audio.sink} (${audio.svol}%)")
+        (label :class "kv" :halign "start" :limit-width 26 :text "OUT ${audio.sink} (${audio.svol}%)")
         (graph :class "wave out" :height 34 :thickness 2
                :value cava_out :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round"))
       (box :orientation "v" :space-evenly false :spacing 1
-        (label :class "kv" :halign "start" :limit-width 42 :text "IN  ${audio.source} (${audio.mvol}%)")
+        (label :class "kv" :halign "start" :limit-width 26 :text "IN  ${audio.source} (${audio.mvol}%)")
         (graph :class "wave in" :height 34 :thickness 2
                :value cava_in :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round")))))
 

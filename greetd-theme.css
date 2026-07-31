@@ -1,0 +1,49 @@
+/* regreet(ログイン画面)のテーマ — cockpit/footと同じ夜桜×モダングラデ配色。
+   GTK4アプリなので、regreet固有のウィジェットID名が不明でも広く効くよう
+   汎用の型セレクタ(window/entry/button/label)中心で組んでいる。 */
+
+window {
+  background-color: transparent;
+}
+
+/* ログインカード全体っぽい領域(box)にすりガラス感 */
+box {
+  color: #f6eef3;
+}
+
+entry {
+  background-color: rgba(18, 20, 34, 0.85);
+  color: #f6eef3;
+  border-radius: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.14);
+  padding: 8px 14px;
+  caret-color: #e8b56b;
+}
+
+entry:focus {
+  border-color: #ff9ec7;
+  box-shadow: 0 0 10px rgba(255, 158, 199, 0.4);
+}
+
+button {
+  background-image: linear-gradient(90deg, #ff9ec7, #8fb8e8);
+  color: #10131f;
+  border-radius: 10px;
+  font-weight: bold;
+  padding: 6px 18px;
+  border: none;
+}
+
+button:hover {
+  background-image: linear-gradient(90deg, #ffb3d4, #a8cbf0);
+}
+
+label {
+  color: #f6eef3;
+}
+
+dropdown, combobox {
+  background-color: rgba(18, 20, 34, 0.85);
+  color: #f6eef3;
+  border-radius: 10px;
+}

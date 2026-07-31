@@ -1,0 +1,425 @@
+;; =====================================================================
+;;  Cockpit dashboard (eww) — bento layout
+;;  Sakura night wallpaper × frosted glass × Apple-style gradient
+;; =====================================================================
+
+;; ---------------- vars ----------------
+(defpoll c_time :interval "1s" `date +'%H:%M'`)
+(defpoll c_sec  :interval "1s" `date +'%S'`)
+(defpoll c_date :interval "30s" `date +'%Y/%m/%d (%a)'`)
+(defpoll c_tz   :interval "60s" `date +'%Z UTC%z'`)
+(defpoll c_aoe  :interval "30s" `TZ='Etc/GMT+12' date +'%H:%M'`)
+
+(defpoll nixlogo :interval "100000s" :initial "" `cat nixlogo.txt`)
+
+(defpoll sysinfo :interval "3s"
+  :initial '{"os":"NixOS","host":"","kernel":"","uptime":"","shell":"","display":"","wm":"Hyprland","terminal":"foot","font":"","cpu_model":"","cpu_cores":0,"cpu_ghz":"?","gpu":"","swap":"Disabled","locale":"","ip":"—","rootfs":"","cpu":0,"mempct":0,"memused":"0","memtotal":"0","rootpct":0,"pkgs":0}'
+  `bash scripts/sysinfo.sh`)
+(defpoll disks :interval "15s" :initial "[]" `bash scripts/disk.sh`)
+(defpoll procs :interval "3s"  :initial "[]" `bash scripts/procs.sh`)
+(defpoll net   :interval "2s"
+  :initial '{"iface":"—","ip":"—","down":0,"up":0,"online":"down","lat":"—","kind":"wired","strength":"—","linkspeed":"—","ssid":"—"}'
+  `bash scripts/net.sh`)
+(defpoll devices :interval "10s"
+  :initial '{"keyboards":0,"mice":0,"displays":0,"usb":0}'
+  `bash scripts/devices.sh`)
+(defpoll bt :interval "10s"
+  :initial '{"powered":false,"devices":[],"count":0}'
+  `bash scripts/bluetooth.sh`)
+;; 帯域を使う実測なので10分間隔(初回は起動直後にも1回走る)
+(defpoll speedtest :interval "600s"
+  :initial '{"ping":"—","down":"—","up":"—","ok":0,"ts":"—"}'
+  `bash scripts/speedtest.sh`)
+(defpoll loc :interval "900s"
+  :initial '{"source":"none","city":"…","temp":"—","desc":"…","feels":"—","icon":"weather-na"}'
+  `bash scripts/location.sh`)
+(defpoll audio :interval "5s"
+  :initial '{"sink":"no device","source":"no device","svol":"—","mvol":"—"}'
+  `bash scripts/audio.sh`)
+;; apt/pacmanの「Nアップデートあり」に相当する概念がNixOSには無いので、
+;; 代わりに「今ピン留めしているnixpkgsが何日前のものか」を出す(1時間毎)
+(defpoll updates :interval "3600s"
+  :initial '{"pinned_date":"—","age_days":0,"rev":"—"}'
+  `bash scripts/updates.sh`)
+;; プロセス別ネットワーク使用量(nethogs、実測に数秒かかるので長め間隔)
+(defpoll netprocs :interval "20s" :initial "[]" `bash scripts/netprocs.sh`)
+;; 個人tailnet上の指定端末の生存確認(実ホスト名はdevice-map.json側、git管理外)
+(defpoll tsdev :interval "15s"
+  :initial '{"state":"stopped","self_ip":"—","devices":[]}'
+  `bash scripts/tailscale-devices.sh`)
+(defpoll services :interval "5s"
+  :initial '{"hyprpaper":0,"waybar":0,"eww":1,"pipewire":0,"tailscaled":0,"fcitx5":0,"claude":0}'
+  `bash scripts/services.sh`)
+(deflisten media
+  :initial '{"status":"stopped","title":"No media playing","artist":"","player":""}'
+  `bash scripts/media.sh`)
+(deflisten cava_out :initial "0" `bash scripts/cava.sh speaker`)
+(deflisten cava_in  :initial "0" `bash scripts/cava.sh mic`)
+
+;; ---------------- building blocks ----------------
+;; icon = 自前ドット絵(icons/*.png, 16x16)のファイル名(拡張子無し)
+(defwidget tile [title icon ?class]
+  (box :class "tile ${class ?: ''}" :orientation "v" :space-evenly false :spacing 5
+    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start"
+      (image :path "icons/${icon}.png" :image-width 15 :image-height 15)
+      (label :class "tile-title" :halign "start" :text title))
+    (children)))
+
+(defwidget palette []
+  (box :class "palette" :orientation "h" :space-evenly false :spacing 4 :halign "start"
+    (box :class "sw sw-bg")
+    (box :class "sw sw-pink")
+    (box :class "sw sw-green")
+    (box :class "sw sw-gold")
+    (box :class "sw sw-fg")))
+
+;; health dot: 1=ok(green) 0=down(red)
+(defwidget dot [ok label]
+  (box :class "healthitem" :orientation "h" :space-evenly false :spacing 4
+    (box :class "healthdot ${ok == 1 ? 'up' : 'down'}")
+    (label :class "healthlabel" :text label)))
+
+;; モダンなピル型バー。GTKの`progress`ウィジェット標準装飾(左端に白い縁が
+;; 残るクセ)を避けるため、track(背景)+fill(実体)を自前のboxで組む。
+;; trackwidth(px)は呼び出し側のタイル幅に合わせて指定する。
+(defwidget pillbar [pct color1 color2 ?trackwidth]
+  (box :class "pilltrack" :halign "start" :style "min-width: ${trackwidth ?: 360}px;"
+    (box :class "pillfill" :halign "start"
+         :style "min-width: ${round(pct / 100 * (trackwidth ?: 360), 0)}px; background-image: linear-gradient(90deg, ${color1}, ${color2});")))
+
+;; ---------------- tiles ----------------
+;; Clock (compact square-ish tile, centered content)
+(defwidget t_clock []
+  (box :class "tile clock-tile" :orientation "v" :space-evenly false :halign "center" :valign "center"
+    (box :orientation "h" :space-evenly false :halign "center"
+      (label :class "clock-main" :text c_time)
+      (label :class "clock-sec"  :text ":${c_sec}"))
+    (label :class "clock-date" :halign "center" :text c_date)
+    (box :orientation "h" :space-evenly false :halign "center" :spacing 12
+      (label :class "clock-sub" :text "󰥔 ${c_tz}")
+      (label :class "clock-sub" :text "AoE ${c_aoe}"))))
+
+;; SYSTEM: logo LEFT, two-column info RIGHT — same facts fastfetch shows in foot.
+(defwidget t_sys []
+  (box :class "tile hero" :orientation "v" :space-evenly false :spacing 8
+    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start"
+      (image :path "icons/system.png" :image-width 15 :image-height 15)
+      (label :class "tile-title" :halign "start" :text "SYSTEM"))
+    (box :orientation "h" :space-evenly false :spacing 18
+      (label :class "nixlogo" :valign "start" :text nixlogo)
+      (box :orientation "h" :space-evenly false :halign "start" :hexpand true :spacing 22
+        (box :orientation "v" :space-evenly false :halign "start" :spacing 2
+          (label :class "kv" :halign "start" :text "${sysinfo.os}")
+          (label :class "kv" :halign "start" :text "${sysinfo.host}")
+          (label :class "kv" :halign "start" :text "Kernel ${sysinfo.kernel}")
+          (label :class "kv" :halign "start" :text "Up ${sysinfo.uptime}")
+          (label :class "kv" :halign "start" :text "Shell ${sysinfo.shell}")
+          (label :class "kv" :halign "start" :text "Display ${sysinfo.display}")
+          (label :class "kv" :halign "start" :text "WM ${sysinfo.wm}")
+          (label :class "kv" :halign "start" :text "Term ${sysinfo.terminal} (${sysinfo.font})"))
+        (box :orientation "v" :space-evenly false :halign "start" :spacing 2
+          (label :class "kv" :halign "start" :limit-width 30 :text "CPU ${sysinfo.cpu_model}")
+          (label :class "kv" :halign "start" :text "  (${sysinfo.cpu_cores}) @ ${sysinfo.cpu_ghz}GHz")
+          (label :class "kv" :halign "start" :limit-width 30 :text "GPU ${sysinfo.gpu}")
+          (label :class "kv" :halign "start" :text "Swap ${sysinfo.swap}")
+          (label :class "kv" :halign "start" :text "Disk(/) ${sysinfo.rootpct}% ${sysinfo.rootfs}")
+          (label :class "kv" :halign "start" :text "IP ${sysinfo.ip}")
+          (label :class "kv" :halign "start" :text "Locale ${sysinfo.locale}")
+          (label :class "kv" :halign "start" :text "Pkgs ${sysinfo.pkgs}"))))
+    (box :orientation "h" :space-evenly false :spacing 10
+      (palette)
+      (label :class "loc-note" :halign "start" :hexpand true
+             :text "nixpkgs pinned ${updates.pinned_date} (${updates.age_days}d ago, ${updates.rev})"))))
+
+;; PERFORMANCE: Task-Manager-style live graphs (Y=usage%, X=time), not bars.
+;; 縦積み(CPU行→グラフ、MEM行→グラフ)にして、DISK/PROCESSESと同じ書式言語に揃える。
+(defwidget t_perf []
+  (tile :title "PERFORMANCE" :icon "performance"
+    (box :orientation "v" :space-evenly false :spacing 6
+      (box :orientation "v" :space-evenly false :spacing 1
+        (box :orientation "h" :space-evenly false
+          (label :class "kv" :text "CPU" :halign "start" :hexpand true)
+          (label :class "kv-num" :text "${sysinfo.cpu}%"))
+        (graph :class "perfgraph cpu" :height 40 :thickness 2
+               :value {sysinfo.cpu} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round"))
+      (box :orientation "v" :space-evenly false :spacing 1
+        (box :orientation "h" :space-evenly false
+          (label :class "kv" :text "MEM" :halign "start" :hexpand true)
+          (label :class "kv-num" :text "${sysinfo.mempct}%"))
+        (graph :class "perfgraph mem" :height 40 :thickness 2
+               :value {sysinfo.mempct} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round")))))
+
+(defwidget t_disk []
+  (tile :title "DISK" :icon "disk"
+    (box :orientation "v" :space-evenly false :spacing 5
+      (for d in disks
+        (box :orientation "v" :space-evenly false :spacing 1
+          (box :orientation "h" :space-evenly false
+            (label :class "kv" :halign "start" :hexpand true :text "${d.mount}")
+            (label :class "kv-num" :halign "end" :text "${d.pct}%"))
+          (pillbar :pct {d.pct} :color1 "#e8b56b" :color2 "#ff9ec7" :trackwidth 360))))))
+
+;; タスクマネージャ同様、CPU/MEMだけでなくディスクI/O(自プロセスの/proc/pid/ioから
+;; 取得、権限問題なし)も出す。ネットワークだけは別枠(NETWORKタイル側のnetprocs)。
+(defwidget t_proc []
+  (tile :title "TOP PROCESSES" :icon "processes"
+    (box :orientation "v" :space-evenly false :spacing 3
+      (for p in procs
+        (box :class "proc-row" :orientation "h" :space-evenly false
+          (box :class "proc-chip ${p.cpu > 50 ? 'hi' : p.cpu > 15 ? 'mid' : 'lo'}")
+          (label :class "proc-name" :halign "start" :hexpand true :limit-width 10 :text {p.name})
+          (label :class "proc-cpu"  :halign "end" :width 42 :text "${p.cpu}%")
+          (label :class "proc-mem"  :halign "end" :width 42 :text "${p.mem}%")
+          (label :class "proc-disk" :halign "end" :width 55
+                 :text "${p.diskr + p.diskw > 0 ? (p.diskr + p.diskw) + 'K/s' : ''}"))))))
+
+;; INTERNET: 接続形態(有線/Wi-Fi名)を明示 + 実測スピードテスト(speedtest-cli、
+;; 「回線速度」そのもの)と、プロセス別通信量(nethogs、あくまで内訳)を明確に分離。
+(defwidget t_internet []
+  (tile :title "INTERNET" :icon "network" :class "${net.online == 'down' ? 'alert' : ''}"
+    (box :orientation "v" :space-evenly false :spacing 4
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${net.online == 'up' ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true
+               :text " ${net.kind == 'wifi' ? 'Wi-Fi: ' + net.ssid + ' (' + net.strength + '%)' : 'Wired (' + net.linkspeed + 'Mbps)'}")
+        (label :class "kv-num" :halign "end" :text "${net.lat}ms"))
+      (label :class "section-h" :halign "start" :text "SPEED TEST")
+      (box :orientation "h" :space-evenly false :halign "start" :spacing 14
+        (box :orientation "v" :space-evenly false :halign "center"
+          (label :class "speed-num dn" :text "${speedtest.down}")
+          (label :class "speed-unit" :text "↓ Mbps"))
+        (box :orientation "v" :space-evenly false :halign "center"
+          (label :class "speed-num up" :text "${speedtest.up}")
+          (label :class "speed-unit" :text "↑ Mbps"))
+        (box :orientation "v" :space-evenly false :halign "center"
+          (label :class "speed-num ping" :text "${speedtest.ping}")
+          (label :class "speed-unit" :text "ping ms")))
+      (label :class "loc-note" :halign "start" :text "last test @ ${speedtest.ts} · ${net.iface} ${net.ip}")
+      (label :class "section-h" :halign "start" :text "LIVE PER-PROCESS (nethogs)")
+      (box :orientation "v" :space-evenly false :spacing 1
+        (for np in netprocs
+          (box :orientation "h" :space-evenly false
+            (label :class "proc-name" :halign "start" :hexpand true :limit-width 16 :text {np.name})
+            (label :class "proc-disk" :halign "end" :width 70 :text "↓${np.down}B/s")
+            (label :class "net-dn" :halign "end" :width 70 :text "↑${np.up}B/s")))))))
+
+(defwidget t_media []
+  (tile :title "NOW PLAYING" :icon "media"
+    (box :orientation "v" :space-evenly false :spacing 4
+      (label :class "media-title" :halign "start" :limit-width 26 :text {media.title})
+      (label :class "media-artist" :halign "start" :limit-width 26
+             :text "${media.artist != '' ? media.artist : media.player}")
+      (label :class "media-status" :halign "start"
+             :text "${media.status == 'Playing' ? '󰏤 Playing' : media.status == 'Paused' ? '󰐊 Paused' : '󰓛 Stopped'}"))))
+
+(defwidget t_audio []
+  (tile :title "AUDIO CHECK" :icon "audio"
+    (box :orientation "v" :space-evenly false :spacing 4
+      (box :orientation "v" :space-evenly false :spacing 1
+        (label :class "kv" :halign "start" :limit-width 42 :text "OUT ${audio.sink} (${audio.svol}%)")
+        (graph :class "wave out" :height 34 :thickness 2
+               :value cava_out :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round"))
+      (box :orientation "v" :space-evenly false :spacing 1
+        (label :class "kv" :halign "start" :limit-width 42 :text "IN  ${audio.source} (${audio.mvol}%)")
+        (graph :class "wave in" :height 34 :thickness 2
+               :value cava_in :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round")))))
+
+(defwidget t_loc []
+  (tile :title "LOCATION" :icon "location"
+    (box :orientation "v" :space-evenly false :spacing 3
+      (label :class "loc-city" :halign "start" :limit-width 22 :text "${loc.city}")
+      (box :orientation "h" :space-evenly false :spacing 10
+        (image :path "icons/${loc.icon}.png" :image-width 26 :image-height 26)
+        (label :class "loc-temp" :text "${loc.temp}°")
+        (box :orientation "v" :space-evenly false :halign "start" :valign "center"
+          (label :class "kv" :halign "start" :text "${loc.desc}")
+          (label :class "kv" :halign "start" :text "Feels ${loc.feels}°C")))
+      (box :orientation "h" :space-evenly false :spacing 4 :halign "start"
+        (image :path "icons/${loc.source == 'phone' ? 'phone' : 'globe'}.png" :image-width 11 :image-height 11)
+        (label :class "loc-note" :halign "start"
+               :text "${loc.source == 'phone' ? 'phone GPS' : 'IP-based (phone link pending)'}")))))
+
+;; 入力/表示/USBデバイスの生存確認。hyprctlがキーボード/マウスを直接把握できる。
+(defwidget t_devices []
+  (tile :title "DEVICES" :icon "gear"
+    (box :orientation "v" :space-evenly false :spacing 3
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${devices.keyboards > 0 ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true :text " Keyboard")
+        (label :class "kv-num" :halign "end" :text "${devices.keyboards}"))
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${devices.mice > 0 ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true :text " Mouse")
+        (label :class "kv-num" :halign "end" :text "${devices.mice}"))
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${devices.displays > 0 ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true :text " Display")
+        (label :class "kv-num" :halign "end" :text "${devices.displays}"))
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${devices.usb > 0 ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true :text " USB")
+        (label :class "kv-num" :halign "end" :text "${devices.usb}")))))
+
+;; Bluetooth単独タイル: 電源ON/OFF + 接続中デバイス一覧
+(defwidget t_bluetooth []
+  (tile :title "BLUETOOTH" :icon "link"
+    (box :orientation "v" :space-evenly false :spacing 3
+      (box :orientation "h" :space-evenly false
+        (box :class "healthdot ${bt.powered ? 'up' : 'down'}")
+        (label :class "kv" :halign "start" :hexpand true :text " Power")
+        (label :class "kv-num" :halign "end" :text "${bt.powered ? 'on' : 'off'}"))
+      (for d in {bt.devices}
+        (box :orientation "h" :space-evenly false
+          (box :class "healthdot up")
+          (label :class "kv" :halign "start" :hexpand true :text " ${d.name}")))
+      (label :class "loc-note" :halign "start"
+             :text "${bt.powered && bt.count == 0 ? 'no devices connected' : ''}"))))
+
+;; 個人tailnet上の4台の生存確認(緑=オンライン、赤=オフライン/未検出)
+(defwidget t_private_net []
+  (tile :title "PRIVATE NETWORK" :icon "link"
+    (box :orientation "v" :space-evenly false :spacing 5
+      (label :class "loc-note" :halign "start" :text "tailscale: ${tsdev.state} · self ${tsdev.self_ip}")
+      (for dv in {tsdev.devices}
+        (box :orientation "h" :space-evenly false
+          (box :class "healthdot ${dv.online ? 'up' : 'down'}")
+          (label :class "kv" :halign "start" :hexpand true :text " ${dv.name}")
+          (label :class "kv-num" :halign "end" :text "${dv.found ? dv.ip : 'not seen'}"))))))
+
+(defwidget t_health []
+  (tile :title "DAEMONS" :icon "gear"
+    (box :orientation "v" :space-evenly false :spacing 3
+      (dot :ok {services.hyprpaper} :label "hyprpaper")
+      (dot :ok {services.waybar} :label "waybar")
+      (dot :ok {services.pipewire} :label "pipewire")
+      (dot :ok {services.tailscaled} :label "tailscaled")
+      (dot :ok {services.fcitx5} :label "fcitx5")
+      (dot :ok {services.claude} :label "claude code"))))
+
+;; ---------------- bento layout ----------------
+;; Left = PC telemetry cluster, Right = ambient/life cluster.
+(defwidget cockpit []
+  (box :class "cockpit" :vexpand true :hexpand true :valign "center" :halign "fill"
+    (box :orientation "h" :space-evenly false :spacing 12 :hexpand true
+      ;; --- left: PC cluster ---
+      (box :class "region-sys" :orientation "v" :space-evenly false :spacing 10 :hexpand true
+        (t_sys)
+        (box :orientation "h" :space-evenly true :spacing 10
+          (t_perf)
+          (t_disk))
+        (box :orientation "h" :space-evenly true :spacing 10
+          (t_proc)
+          (t_devices))
+        (box :orientation "h" :space-evenly true :spacing 10
+          (t_health)
+          (t_bluetooth)))
+      ;; --- right: ambient cluster ---
+      (box :class "region-life" :orientation "v" :space-evenly false :spacing 10
+        (box :orientation "h" :space-evenly true :spacing 10
+          (t_clock)
+          (t_loc))
+        (t_internet)
+        (t_private_net)
+        (box :orientation "h" :space-evenly true :spacing 10
+          (t_audio)
+          (t_media))))))
+
+;; ---------------- study/input screen ($mod+I) ----------------
+(defpoll til :interval "600s" :initial "[]" `bash scripts/reddit-til.sh`)
+
+(defwidget til_post [p]
+  (box :class "til-post" :orientation "v" :space-evenly false :spacing 4
+       :onclick "eww close study && hyprctl dispatch submap reset && firefox '${p.url}' &"
+    (label :class "til-title" :halign "start" :wrap true :limit-width 46 :text "${p.title}")
+    (box :orientation "h" :space-evenly false :spacing 12
+      (label :class "til-meta" :halign "start" :text "▲ ${p.score}")
+      (label :class "til-meta" :halign "start" :text "💬 ${p.comments}"))))
+
+(defwidget t_til []
+  (tile :title "TODAY I LEARNED (r/todayilearned)" :icon "gear"
+    (box :orientation "v" :space-evenly true :spacing 8
+      (for p in til
+        (til_post :p p))
+      (label :class "loc-note" :halign "center"
+             :visible {arraylength(til) == 0}
+             :text "記事を取得できませんでした(reddit側のアクセス制限の可能性、10分後に自動再試行します)"))))
+
+;; ANKIタイルは実際のウィジェット埋め込みではなく、Ankiの実ウィンドウを
+;; hyprlandのwindowrulev2でこの枠と同じ座標・サイズにfloat配置することで
+;; 「タイルの中で単語帳が回っている」ように見せる目軽trick。枠自体は空箱。
+(defwidget anki_frame []
+  (box :class "tile anki-frame" :orientation "v" :space-evenly false
+    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start"
+      (image :path "icons/gear.png" :image-width 15 :image-height 15)
+      (label :class "tile-title" :halign "start" :text "ANKI"))
+    (label :class "loc-note" :halign "center" :valign "center" :vexpand true
+           :text "$mod Shift+Aで単語を登録すると、\nここでAnkiが自動起動して復習できます")))
+
+(defwidget study []
+  (box :class "study" :orientation "v" :space-evenly false :style "margin: 60px 0 0 60px;"
+    (label :class "study-heading" :halign "start" :text "INPUT")
+    (box :orientation "h" :space-evenly false :spacing 40 :style "margin-top: 14px;"
+      (box :orientation "v" :space-evenly false :spacing 8
+        (t_til)
+        (label :class "loc-note" :halign "start" :text "クリックで記事を開く(通常ワークスペースにFirefoxが起動します)"))
+      (anki_frame))))
+
+(defwindow study
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "1279px" :height "799px" :anchor "center")
+  :stacking "fg"
+  :exclusive false
+  :focusable false
+  (study))
+
+;; ---------------- keybind cheatsheet ($mod+,) ----------------
+(defwidget kb [combo desc]
+  (box :class "kb-row" :orientation "h" :space-evenly false :spacing 10
+    (label :class "kb-combo" :halign "start" :width 170 :text combo)
+    (label :class "kb-desc" :halign "start" :hexpand true :text desc)))
+
+(defwidget cheatsheet []
+  (box :class "tile cheatsheet-tile" :orientation "v" :space-evenly false :spacing 10 :halign "center" :valign "center"
+    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start"
+      (image :path "icons/gear.png" :image-width 15 :image-height 15)
+      (label :class "tile-title" :halign "start" :text "SHORTCUTS"))
+    (box :orientation "h" :space-evenly false :spacing 28
+      (box :orientation "v" :space-evenly false :spacing 4
+        (kb :combo "Super + Return" :desc "ターミナルを開く")
+        (kb :combo "Super + Q" :desc "ウィンドウを閉じる")
+        (kb :combo "Super + D" :desc "コックピットを開く")
+        (kb :combo "Super + ," :desc "このショートカット一覧")
+        (kb :combo "Super + L" :desc "画面ロック")
+        (kb :combo "Super + V" :desc "クリップボード履歴")
+        (kb :combo "Super + W" :desc "Windows環境へ切替")
+        (kb :combo "Super + I" :desc "勉強/インプット画面")
+        (kb :combo "Super + Shift + A" :desc "選択単語をAnkiへ登録")
+        (kb :combo "Super + A" :desc "AIエージェント作業画面")
+        (kb :combo "Super + Shift + R" :desc "デーモン自己修復"))
+      (box :orientation "v" :space-evenly false :spacing 4
+        (kb :combo "Print" :desc "スクショ(範囲+注釈)")
+        (kb :combo "Super + Print" :desc "スクショ(範囲→コピー)")
+        (kb :combo "Super + Shift + Print" :desc "スクショ(全画面)")
+        (kb :combo "Super + Alt + R" :desc "録画切替(全画面)")
+        (kb :combo "Super + Alt + Shift + R" :desc "録画切替(範囲)")
+        (kb :combo "Super + 1〜9" :desc "ワークスペース切替")
+        (kb :combo "Super + M" :desc "Hyprland終了")
+        (kb :combo "Escape / Super + ," :desc "この一覧を閉じる")))))
+
+(defwindow cheatsheet
+  :monitor 0
+  :geometry (geometry :x "0" :y "0" :width "1279px" :height "799px" :anchor "center")
+  :stacking "fg"
+  :exclusive false
+  :focusable false
+  (cheatsheet))
+
+(defwindow cockpit
+  :monitor 0
+  ;; y="6px"はwaybarの排他領域(34px)が自動加算された上での相対値
+  ;; (実測: 指定40pxが実際は74pxになる=+34のズレ。6pxで見た目40pxに補正)
+  :geometry (geometry :x "0" :y "6px" :width "1279px" :height "753px" :anchor "top left")
+  :stacking "fg"
+  :exclusive false
+  :focusable false
+  (cockpit))

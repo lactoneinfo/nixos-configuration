@@ -1,0 +1,6 @@
+private-hosts.nix
+*secrets*
+.private-rice/
+result
+result-*
+sakura.jpg

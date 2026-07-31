@@ -1,0 +1,202 @@
+// =====================================================================
+//  Cockpit dashboard — night-sakura × modern gradient (Apple/Mac inspired)
+//  Palette pulled from wallpaper: sakura pink / night sky blue / violet / amber lantern
+// =====================================================================
+$sakura: #ff9ec7;
+$rose:   #f2709c;
+$violet: #b57edc;
+$sky:    #8fb8e8;
+$amber:  #e8b56b;
+$red:    #ff6b6b;
+$ok:     #7ed9a8;  // 健康状態の"OK"専用(信号としての緑、装飾のskyとは別軸)
+$fg:     #f6eef3;
+$dim:    rgba(246,238,243,0.55);
+$glass:  rgba(16, 18, 30, 0.80);
+$glassBorder: rgba(255,255,255,0.14);
+
+* {
+  font-family: "JetBrainsMono Nerd Font";
+  font-size: 11px;
+}
+
+.cockpit {
+  background-color: rgba(10, 12, 22, 0.10);  // wallpaper stays untouched, near-fully see-through
+  padding: 10px 16px;
+  color: $fg;
+}
+
+.tile {
+  background-color: $glass;   // frosted-glass panel; real HW adds Hyprland blur behind it
+  // footのHyprlandアクティブボーダー(桜→空色の斜めグラデーション)と揃える
+  border: 2px solid transparent;
+  border-image-source: linear-gradient(45deg, $sakura, $sky);
+  border-image-slice: 1;
+  border-radius: 16px;
+  padding: 9px 14px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08),
+              0 6px 18px rgba(0,0,0,0.28);
+}
+.tile.alert {
+  border-image-source: linear-gradient(45deg, $red, $amber);
+}
+
+.section-h {
+  color: $amber;
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin-top: 4px;
+}
+
+.tile-title {
+  color: $sakura;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 3px;
+  margin-bottom: 3px;
+}
+
+.region-life { min-width: 460px; }
+.hero { min-width: 620px; }
+.hero .kv { font-size: 10px; }
+
+// ---- clock (compact tile, paired with location) ----
+.clock-tile {
+  padding: 10px 16px;
+  min-width: 170px;
+  background-image: linear-gradient(135deg, rgba(255,158,199,0.14) 0%, rgba(181,126,220,0.12) 60%, rgba(20,24,40,0.30) 100%);
+}
+.clock-main {
+  color: $fg;
+  font-size: 34px;
+  font-weight: bold;
+  text-shadow: 0 0 16px rgba(255,158,199,0.55);
+}
+.clock-sec { color: $sakura; font-size: 15px; margin-left: 3px; }
+.clock-date { color: $violet; font-size: 12px; margin-top: -4px; }
+.clock-sub { color: $dim; font-size: 9px; }
+
+// ---- system (logo LEFT, info RIGHT — wide hero, not tall) ----
+.nixlogo {
+  color: $sakura;
+  font-size: 5px;
+  text-shadow: 0 0 8px rgba(255,158,199,0.4);
+}
+.kv { color: $fg; font-size: 11px; }
+.kv-num { color: $amber; font-size: 11px; }
+
+// 自前ピルバー(GTK progressの白フチ問題を回避、モダンなフラットバー)
+.pilltrack {
+  border-radius: 6px;
+  min-height: 7px;
+  background-color: rgba(255,255,255,0.07);
+}
+.pillfill {
+  border-radius: 6px;
+  min-height: 7px;
+}
+
+// ---- palette swatches ----
+.palette { margin-top: 4px; }
+.sw { min-width: 18px; min-height: 10px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.16); }
+.sw-bg    { background-color: #10131f; }
+.sw-pink  { background-image: linear-gradient(135deg, $sakura, $rose); }
+.sw-green { background-image: linear-gradient(135deg, $sky, $violet); }
+.sw-gold  { background-color: $amber; }
+.sw-fg    { background-color: $fg; }
+
+// ---- processes (compact rows with a tiny load-severity chip) ----
+.proc-row { padding: 1px 0; }
+.proc-name { color: $fg; font-size: 10px; }
+.proc-cpu  { color: $sakura; font-size: 10px; }
+.proc-mem  { color: $dim; font-size: 9px; }
+.proc-disk { color: $amber; font-size: 9px; }
+.proc-chip { min-width: 8px; min-height: 8px; border-radius: 2px; margin-right: 5px; }
+.proc-chip.lo { background-color: $sky; }
+.proc-chip.mid { background-color: $amber; }
+.proc-chip.hi { background-color: $red; box-shadow: 0 0 5px $red; }
+
+// ---- graphs (network / performance / audio waveform — all same family) ----
+.netgraph, .perfgraph, .wave {
+  background-color: rgba(255,255,255,0.04);
+  border-radius: 8px;
+  margin: 2px 0;
+}
+.netgraph { color: $sky; }
+.perfgraph.cpu { color: $sakura; }
+.perfgraph.mem { color: $sky; }
+.wave.out { color: $violet; }
+.wave.in  { color: $sky; }
+.net-dn { color: $sky; font-size: 10px; }
+
+// ---- speed test (big numbers, like a speedtest result) ----
+.speed-num { font-weight: bold; font-size: 22px; }
+.speed-num.dn   { color: $sky; text-shadow: 0 0 8px rgba(143,184,232,0.5); }
+.speed-num.up   { color: $sakura; text-shadow: 0 0 8px rgba(255,158,199,0.5); }
+.speed-num.ping { color: $amber; text-shadow: 0 0 8px rgba(232,181,107,0.4); }
+.speed-unit { color: $dim; font-size: 9px; margin-top: -2px; }
+.badge { font-size: 10px; border-radius: 8px; padding: 1px 9px; }
+.badge.ok  { color: #10131f; background-color: $ok; }
+.badge.off { color: $dim; background-color: rgba(255,255,255,0.06); }
+.badge.bad { color: #10131f; background-color: $red; }
+
+// ---- health dots (daemon status at a glance) ----
+.healthitem { padding: 1px 0; }
+.healthdot { min-width: 9px; min-height: 9px; border-radius: 5px; margin-right: 2px; }
+.healthdot.up   { background-color: $ok;  box-shadow: 0 0 6px $ok; }
+.healthdot.down { background-color: $red; box-shadow: 0 0 6px $red; }
+.healthlabel { color: $fg; font-size: 10px; }
+
+// ---- media ----
+.media-title  { color: $fg; font-size: 13px; font-weight: bold; }
+.media-artist { color: $sakura; font-size: 10px; }
+.media-status { color: $dim; font-size: 9px; }
+
+// ---- location ----
+.loc-city { color: $amber; font-size: 12px; font-weight: bold; }
+.loc-icon { color: $amber; font-size: 22px; }
+.loc-temp {
+  color: $sakura;
+  font-size: 24px;
+  font-weight: bold;
+  text-shadow: 0 0 10px rgba(255,158,199,0.5);
+}
+.loc-note { color: $dim; font-size: 9px; margin-top: 2px; }
+
+// ---- keybind cheatsheet ($mod+,) ----
+.cheatsheet-tile {
+  min-width: 700px;
+  padding: 20px 26px;
+  background-color: rgba(16, 18, 30, 0.92);
+}
+.kb-row { padding: 3px 0; }
+.kb-combo { color: $amber; font-size: 12px; font-weight: bold; }
+.kb-desc { color: $fg; font-size: 12px; }
+
+// ---- study/input screen ($mod+I) ----
+.study-heading {
+  color: $sakura;
+  font-size: 22px;
+  font-weight: bold;
+  letter-spacing: 6px;
+  text-shadow: 0 0 14px rgba(255,158,199,0.5);
+}
+.til-post {
+  min-width: 560px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background-color: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.til-post:hover {
+  background-color: rgba(255,158,199,0.10);
+  border: 1px solid $sakura;
+}
+.til-title { color: $fg; font-size: 13px; font-weight: bold; }
+.til-meta { color: $amber; font-size: 10px; }
+
+.anki-frame {
+  min-width: 540px;
+  min-height: 580px;
+  background-color: rgba(16, 18, 30, 0.35); // 実Ankiウィンドウが重なる想定なので薄め
+}

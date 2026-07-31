@@ -2,7 +2,7 @@
 # CPU使用率の高い上位プロセスをJSON配列で(重いもの上位)。
 # /proc/<pid>/io の read_bytes/write_bytes の差分からディスクI/O速度(KB/s)も取る
 # (Windowsのタスクマネージャで見えるディスク列に相当。自分のプロセスなら権限問題なし)。
-mapfile -t lines < <(ps -eo pid,comm,pcpu,pmem --sort=-pcpu --no-headers 2>/dev/null | grep -vE '^\s*[0-9]+ ps( |$)' | head -6)
+mapfile -t lines < <(ps -eo pid,comm,pcpu,pmem --sort=-pcpu --no-headers 2>/dev/null | grep -vE '^\s*[0-9]+ ps( |$)' | head -5)
 
 declare -A r1 w1
 for line in "${lines[@]}"; do

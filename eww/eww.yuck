@@ -26,8 +26,10 @@
 (defpoll bt :interval "10s"
   :initial '{"powered":false,"devices":[],"count":0}'
   `bash scripts/bluetooth.sh`)
-;; 帯域を使う実測なので10分間隔(初回は起動直後にも1回走る)
-(defpoll speedtest :interval "600s"
+;; 帯域を使う実測なので普段は10分間隔(初回は起動直後にも1回走る)。
+;; deflisten化しているのは、SPEED TESTのretryボタンから即時再計測できるように
+;; するため(スクリプト側がFIFOで待ち受け、押されたら10分待たずに即座に再実行)。
+(deflisten speedtest
   :initial '{"ping":"—","down":"—","up":"—","ok":0,"ts":"—"}'
   `bash scripts/speedtest.sh`)
 (defpoll loc :interval "900s"
@@ -51,7 +53,7 @@
   :initial '{"hyprpaper":0,"waybar":0,"eww":1,"pipewire":0,"tailscaled":0,"fcitx5":0,"claude":0}'
   `bash scripts/services.sh`)
 (deflisten media
-  :initial '{"status":"stopped","title":"No media playing","artist":"","player":""}'
+  :initial '{"status":"stopped","title":"No media playing","artist":"","player":"","art":"","pct":0,"pos_fmt":"0:00","len_fmt":"0:00"}'
   `bash scripts/media.sh`)
 (deflisten cava_out :initial "0" `bash scripts/cava.sh speaker`)
 (deflisten cava_in  :initial "0" `bash scripts/cava.sh mic`)
@@ -60,9 +62,9 @@
 ;; icon = 自前ドット絵(icons/*.png, 16x16)のファイル名(拡張子無し)
 (defwidget tile [title icon ?class]
   (box :class "tile ${class ?: ''}" :orientation "v" :space-evenly false :spacing 5
-    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start"
-      (image :path "icons/${icon}.png" :image-width 15 :image-height 15)
-      (label :class "tile-title" :halign "start" :text title))
+    (box :class "tile-title-row" :orientation "h" :space-evenly false :spacing 6 :halign "start" :valign "center"
+      (image :path "icons/${icon}.png" :image-width 15 :image-height 15 :valign "center")
+      (label :class "tile-title" :halign "start" :valign "center" :text title))
     (children)))
 
 (defwidget palette []
@@ -99,6 +101,13 @@
       (label :class "clock-sub" :text "󰥔 ${c_tz}")
       (label :class "clock-sub" :text "AoE ${c_aoe}"))))
 
+;; キー(項目名、控えめな色)+値(白)を横並びにする。文字が全部白一色だと
+;; どこが項目名でどこが値か見分けにくい、という指摘への対応。
+(defwidget kv2 [k v ?lw]
+  (box :orientation "h" :space-evenly false :spacing 4
+    (label :class "kv-key" :halign "start" :text k)
+    (label :class "kv" :halign "start" :limit-width {lw ?: 100} :text v)))
+
 ;; SYSTEM: logo LEFT, two-column info RIGHT — same facts fastfetch shows in foot.
 (defwidget t_sys []
   (box :class "tile hero" :orientation "v" :space-evenly false :spacing 8
@@ -111,21 +120,21 @@
         (box :orientation "v" :space-evenly false :halign "start" :spacing 2
           (label :class "kv" :halign "start" :text "${sysinfo.os}")
           (label :class "kv" :halign "start" :text "${sysinfo.host}")
-          (label :class "kv" :halign "start" :text "Kernel ${sysinfo.kernel}")
-          (label :class "kv" :halign "start" :text "Up ${sysinfo.uptime}")
-          (label :class "kv" :halign "start" :text "Shell ${sysinfo.shell}")
-          (label :class "kv" :halign "start" :text "Display ${sysinfo.display}")
-          (label :class "kv" :halign "start" :text "WM ${sysinfo.wm}")
-          (label :class "kv" :halign "start" :text "Term ${sysinfo.terminal} (${sysinfo.font})"))
+          (kv2 :k "Kernel" :v {sysinfo.kernel})
+          (kv2 :k "Up" :v {sysinfo.uptime})
+          (kv2 :k "Shell" :v {sysinfo.shell})
+          (kv2 :k "Display" :v {sysinfo.display})
+          (kv2 :k "WM" :v {sysinfo.wm})
+          (kv2 :k "Term" :v "${sysinfo.terminal} (${sysinfo.font})"))
         (box :orientation "v" :space-evenly false :halign "start" :spacing 2
-          (label :class "kv" :halign "start" :limit-width 30 :text "CPU ${sysinfo.cpu_model}")
+          (kv2 :k "CPU" :v {sysinfo.cpu_model} :lw 30)
           (label :class "kv" :halign "start" :text "  (${sysinfo.cpu_cores}) @ ${sysinfo.cpu_ghz}GHz")
-          (label :class "kv" :halign "start" :limit-width 30 :text "GPU ${sysinfo.gpu}")
-          (label :class "kv" :halign "start" :text "Swap ${sysinfo.swap}")
-          (label :class "kv" :halign "start" :text "Disk(/) ${sysinfo.rootpct}% ${sysinfo.rootfs}")
-          (label :class "kv" :halign "start" :text "IP ${sysinfo.ip}")
-          (label :class "kv" :halign "start" :text "Locale ${sysinfo.locale}")
-          (label :class "kv" :halign "start" :text "Pkgs ${sysinfo.pkgs}"))))
+          (kv2 :k "GPU" :v {sysinfo.gpu} :lw 30)
+          (kv2 :k "Swap" :v {sysinfo.swap})
+          (kv2 :k "Disk(/)" :v "${sysinfo.rootpct}% ${sysinfo.rootfs}")
+          (kv2 :k "IP" :v {sysinfo.ip})
+          (kv2 :k "Locale" :v {sysinfo.locale})
+          (kv2 :k "Pkgs" :v {sysinfo.pkgs}))))
     (box :orientation "h" :space-evenly false :spacing 10
       (palette)
       (label :class "loc-note" :halign "start" :hexpand true
@@ -140,14 +149,18 @@
         (box :orientation "h" :space-evenly false
           (label :class "kv" :text "CPU" :halign "start" :hexpand true)
           (label :class "kv-num" :text "${sysinfo.cpu}%"))
-        (graph :class "perfgraph cpu" :height 40 :thickness 2
-               :value {sysinfo.cpu} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round"))
+        (overlay
+          (box :class "graph-gridlines" :hexpand true)
+          (graph :class "perfgraph cpu" :height 40 :thickness 2 :hexpand true
+                 :value {sysinfo.cpu} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round")))
       (box :orientation "v" :space-evenly false :spacing 1
         (box :orientation "h" :space-evenly false
           (label :class "kv" :text "MEM" :halign "start" :hexpand true)
           (label :class "kv-num" :text "${sysinfo.mempct}%"))
-        (graph :class "perfgraph mem" :height 40 :thickness 2
-               :value {sysinfo.mempct} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round")))))
+        (overlay
+          (box :class "graph-gridlines" :hexpand true)
+          (graph :class "perfgraph mem" :height 40 :thickness 2 :hexpand true
+                 :value {sysinfo.mempct} :time-range "60s" :min 0 :max 100 :dynamic false :line-style "round"))))))
 
 (defwidget t_disk []
   (tile :title "DISK" :icon "disk"
@@ -156,6 +169,7 @@
         (box :orientation "v" :space-evenly false :spacing 1
           (box :orientation "h" :space-evenly false
             (label :class "kv" :halign "start" :hexpand true :text "${d.mount}")
+            (label :class "loc-note" :halign "end" :text "${d.used_h}/${d.size_h} ")
             (label :class "kv-num" :halign "end" :text "${d.pct}%"))
           (pillbar :pct {d.pct} :color1 "#e8b56b" :color2 "#ff9ec7" :trackwidth 360))))))
 
@@ -164,6 +178,12 @@
 (defwidget t_proc []
   (tile :title "TOP PROCESSES" :icon "processes"
     (box :orientation "v" :space-evenly false :spacing 3
+      (box :class "proc-row" :orientation "h" :space-evenly false
+        (box :class "proc-chip")
+        (label :class "proc-name" :halign "start" :hexpand true :limit-width 10 :text "")
+        (label :class "proc-head" :halign "end" :width 42 :text "CPU")
+        (label :class "proc-head" :halign "end" :width 42 :text "MEM")
+        (label :class "proc-head" :halign "end" :width 55 :text "DISK"))
       (for p in procs
         (box :class "proc-row" :orientation "h" :space-evenly false
           (box :class "proc-chip ${p.cpu > 50 ? 'hi' : p.cpu > 15 ? 'mid' : 'lo'}")
@@ -183,7 +203,12 @@
         (label :class "kv" :halign "start" :hexpand true
                :text " ${net.kind == 'wifi' ? 'Wi-Fi: ' + net.ssid + ' (' + net.strength + '%)' : 'Wired (' + net.linkspeed + 'Mbps)'}")
         (label :class "kv-num" :halign "end" :text "${net.lat}ms"))
-      (label :class "section-h" :halign "start" :text "SPEED TEST")
+      (box :orientation "h" :space-evenly false
+        (label :class "section-h" :halign "start" :hexpand true :text "SPEED TEST")
+        (box :class "retry-btn" :orientation "h" :space-evenly false :spacing 3 :halign "end"
+             :onclick "echo x > /tmp/eww-speedtest-trigger"
+          (label :class "retry-icon" :text "⟳")
+          (label :class "retry-text" :text "retry")))
       (box :orientation "h" :space-evenly false :halign "start" :spacing 14
         (box :orientation "v" :space-evenly false :halign "center"
           (label :class "speed-num dn" :text "${speedtest.down}")
@@ -199,30 +224,44 @@
       (box :orientation "v" :space-evenly false :spacing 1
         (for np in netprocs
           (box :orientation "h" :space-evenly false
-            (label :class "proc-name" :halign "start" :hexpand true :limit-width 16 :text {np.name})
+            (label :class "proc-name" :halign "start" :hexpand true :limit-width 30 :text {np.name})
             (label :class "proc-disk" :halign "end" :width 70 :text "↓${np.down}B/s")
             (label :class "net-dn" :halign "end" :width 70 :text "↑${np.up}B/s")))))))
 
+;; 横幅いっぱいの独立行として置く前提のレイアウト(region-lifeの他タイルと
+;; 横並びにすると、AUDIO CHECKと同様に右端マージンが消える不具合が起きるため)。
+;; 上段=曲情報(左)+サムネイル(右)、下段=シークバー(全幅)。
 (defwidget t_media []
   (tile :title "NOW PLAYING" :icon "media"
-    (box :orientation "v" :space-evenly false :spacing 4
-      (label :class "media-title" :halign "start" :limit-width 26 :text {media.title})
-      (label :class "media-artist" :halign "start" :limit-width 26
-             :text "${media.artist != '' ? media.artist : media.player}")
-      (label :class "media-status" :halign "start"
-             :text "${media.status == 'Playing' ? '󰏤 Playing' : media.status == 'Paused' ? '󰐊 Paused' : '󰓛 Stopped'}"))))
+    (box :orientation "v" :space-evenly false :spacing 6
+      (box :orientation "h" :space-evenly false :spacing 14
+        (box :orientation "v" :space-evenly false :spacing 3 :hexpand true
+          (label :class "media-title" :halign "start" :limit-width 34 :text {media.title})
+          (label :class "media-artist" :halign "start" :limit-width 34
+                 :text "${media.artist != '' ? media.artist : media.player}")
+          (label :class "media-status" :halign "start"
+                 :text "${media.status == 'Playing' ? '󰏤 Playing' : media.status == 'Paused' ? '󰐊 Paused' : '󰓛 Stopped'}"))
+        (box :class "media-art-wrap"
+          (image :class "media-art"
+                 :path "${media.art != '' ? media.art : 'icons/media.png'}"
+                 :image-width 56 :image-height 56)))
+      (box :orientation "h" :space-evenly false :spacing 6
+        (label :class "media-time" :text {media.pos_fmt})
+        (pillbar :pct {media.pct} :color1 "#8fb8e8" :color2 "#ff9ec7" :trackwidth 300)
+        (label :class "media-time" :text {media.len_fmt})))))
 
+;; 同じく横幅いっぱいの独立行前提。IN|OUTを横並びにしてスペースを稼ぐ。
 (defwidget t_audio []
   (tile :title "AUDIO CHECK" :icon "audio"
-    (box :orientation "v" :space-evenly false :spacing 4
-      (box :orientation "v" :space-evenly false :spacing 1
-        (label :class "kv" :halign "start" :limit-width 26 :text "OUT ${audio.sink} (${audio.svol}%)")
-        (graph :class "wave out" :height 34 :thickness 2
-               :value cava_out :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round"))
-      (box :orientation "v" :space-evenly false :spacing 1
-        (label :class "kv" :halign "start" :limit-width 26 :text "IN  ${audio.source} (${audio.mvol}%)")
+    (box :orientation "h" :space-evenly true :spacing 14
+      (box :orientation "v" :space-evenly false :spacing 1 :hexpand true
+        (label :class "kv" :halign "start" :limit-width 44 :text "IN  ${audio.source} (${audio.mvol}%)")
         (graph :class "wave in" :height 34 :thickness 2
-               :value cava_in :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round")))))
+               :value cava_in :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round"))
+      (box :orientation "v" :space-evenly false :spacing 1 :hexpand true
+        (label :class "kv" :halign "start" :limit-width 44 :text "OUT ${audio.sink} (${audio.svol}%)")
+        (graph :class "wave out" :height 34 :thickness 2
+               :value cava_out :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round")))))
 
 (defwidget t_loc []
   (tile :title "LOCATION" :icon "location"
@@ -286,15 +325,18 @@
           (label :class "kv" :halign "start" :hexpand true :text " ${dv.name}")
           (label :class "kv-num" :halign "end" :text "${dv.found ? dv.ip : 'not seen'}"))))))
 
+;; 縦一列(6行)だと高さを取りすぎるため、2列×3行にして省スペース化。
 (defwidget t_health []
   (tile :title "DAEMONS" :icon "gear"
-    (box :orientation "v" :space-evenly false :spacing 3
-      (dot :ok {services.hyprpaper} :label "hyprpaper")
-      (dot :ok {services.waybar} :label "waybar")
-      (dot :ok {services.pipewire} :label "pipewire")
-      (dot :ok {services.tailscaled} :label "tailscaled")
-      (dot :ok {services.fcitx5} :label "fcitx5")
-      (dot :ok {services.claude} :label "claude code"))))
+    (box :orientation "h" :space-evenly true :spacing 10
+      (box :orientation "v" :space-evenly false :spacing 3
+        (dot :ok {services.hyprpaper} :label "hyprpaper")
+        (dot :ok {services.waybar} :label "waybar")
+        (dot :ok {services.pipewire} :label "pipewire"))
+      (box :orientation "v" :space-evenly false :spacing 3
+        (dot :ok {services.tailscaled} :label "tailscaled")
+        (dot :ok {services.fcitx5} :label "fcitx5")
+        (dot :ok {services.claude} :label "claude code")))))
 
 ;; ---------------- bento layout ----------------
 ;; Left = PC telemetry cluster, Right = ambient/life cluster.
@@ -320,9 +362,8 @@
           (t_loc))
         (t_internet)
         (t_private_net)
-        (box :orientation "h" :space-evenly true :spacing 10
-          (t_audio)
-          (t_media))))))
+        (t_media)
+        (t_audio)))))
 
 ;; ---------------- study/input screen ($mod+I) ----------------
 (defpoll til :interval "600s" :initial "[]" `bash scripts/reddit-til.sh`)
@@ -416,9 +457,10 @@
 
 (defwindow cockpit
   :monitor 0
-  ;; y="6px"はwaybarの排他領域(34px)が自動加算された上での相対値
-  ;; (実測: 指定40pxが実際は74pxになる=+34のズレ。6pxで見た目40pxに補正)
-  :geometry (geometry :x "0" :y "6px" :width "1279px" :height "753px" :anchor "top left")
+  ;; yはwaybarの排他領域(34px)が自動加算された上での相対値
+  ;; (実測: 指定40pxが実際は74pxになる=+34のズレ)。上の余白を減らすため0pxにし、
+  ;; 浮いた分をheightに回して下まで使い切るようにする。
+  :geometry (geometry :x "0" :y "0px" :width "1279px" :height "759px" :anchor "top left")
   :stacking "fg"
   :exclusive false
   :focusable false

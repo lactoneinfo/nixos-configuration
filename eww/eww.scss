@@ -42,11 +42,16 @@ $glassBorder: rgba(255,255,255,0.14);
 
 .section-h {
   color: $amber;
-  font-size: 9px;
+  font-size: 11px;
   font-weight: bold;
   letter-spacing: 2px;
   margin-top: 4px;
 }
+
+.retry-btn { margin-top: 4px; }
+.retry-icon { color: $sky; font-size: 22px; font-weight: bold; }
+.retry-text { color: $sky; font-size: 10px; font-weight: bold; }
+.retry-btn:hover .retry-icon, .retry-btn:hover .retry-text { color: $sakura; }
 
 .tile-title {
   color: $sakura;
@@ -77,7 +82,7 @@ $glassBorder: rgba(255,255,255,0.14);
 }
 .clock-sec { color: $sakura; font-size: 15px; margin-left: 3px; }
 .clock-date { color: $violet; font-size: 12px; margin-top: -4px; }
-.clock-sub { color: $dim; font-size: 9px; }
+.clock-sub { color: $dim; font-size: 11px; }
 
 // ---- system (logo LEFT, info RIGHT — wide hero, not tall) ----
 .nixlogo {
@@ -87,6 +92,17 @@ $glassBorder: rgba(255,255,255,0.14);
 }
 .kv { color: $fg; font-size: 11px; }
 .kv-num { color: $amber; font-size: 11px; }
+.kv-key { color: $sky; font-size: 11px; }
+
+// CPU/MEMグラフの目盛り線(0/50/100%の位置に薄い白ライン)。オーディオの波形
+// グラフには付けない(見れば明らかなので不要、との指示)。
+.graph-gridlines {
+  min-height: 40px;
+  background-image: linear-gradient(to top,
+    rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.18) 2%, transparent 2%,
+    transparent 48%, rgba(255,255,255,0.18) 48%, rgba(255,255,255,0.18) 52%, transparent 52%,
+    transparent 98%, rgba(255,255,255,0.18) 98%, rgba(255,255,255,0.18) 100%);
+}
 
 // 自前ピルバー(GTK progressの白フチ問題を回避、モダンなフラットバー)
 .pilltrack {
@@ -110,10 +126,11 @@ $glassBorder: rgba(255,255,255,0.14);
 
 // ---- processes (compact rows with a tiny load-severity chip) ----
 .proc-row { padding: 1px 0; }
-.proc-name { color: $fg; font-size: 10px; }
-.proc-cpu  { color: $sakura; font-size: 10px; }
-.proc-mem  { color: $dim; font-size: 9px; }
-.proc-disk { color: $amber; font-size: 9px; }
+.proc-head { color: $dim; font-size: 10px; font-weight: bold; }
+.proc-name { color: $fg; font-size: 11px; }
+.proc-cpu  { color: $sakura; font-size: 11px; }
+.proc-mem  { color: $dim; font-size: 11px; }
+.proc-disk { color: $amber; font-size: 11px; }
 .proc-chip { min-width: 8px; min-height: 8px; border-radius: 2px; margin-right: 5px; }
 .proc-chip.lo { background-color: $sky; }
 .proc-chip.mid { background-color: $amber; }
@@ -137,7 +154,7 @@ $glassBorder: rgba(255,255,255,0.14);
 .speed-num.dn   { color: $sky; text-shadow: 0 0 8px rgba(143,184,232,0.5); }
 .speed-num.up   { color: $sakura; text-shadow: 0 0 8px rgba(255,158,199,0.5); }
 .speed-num.ping { color: $amber; text-shadow: 0 0 8px rgba(232,181,107,0.4); }
-.speed-unit { color: $dim; font-size: 9px; margin-top: -2px; }
+.speed-unit { color: $dim; font-size: 11px; margin-top: -2px; }
 .badge { font-size: 10px; border-radius: 8px; padding: 1px 9px; }
 .badge.ok  { color: #10131f; background-color: $ok; }
 .badge.off { color: $dim; background-color: rgba(255,255,255,0.06); }
@@ -153,7 +170,10 @@ $glassBorder: rgba(255,255,255,0.14);
 // ---- media ----
 .media-title  { color: $fg; font-size: 13px; font-weight: bold; }
 .media-artist { color: $sakura; font-size: 10px; }
-.media-status { color: $dim; font-size: 9px; }
+.media-status { color: $dim; font-size: 11px; }
+.media-time   { color: $sky; font-size: 11px; font-weight: bold; }
+.media-art-wrap { border-radius: 8px; }
+.media-art      { border-radius: 8px; }
 
 // ---- location ----
 .loc-city { color: $amber; font-size: 12px; font-weight: bold; }
@@ -164,7 +184,7 @@ $glassBorder: rgba(255,255,255,0.14);
   font-weight: bold;
   text-shadow: 0 0 10px rgba(255,158,199,0.5);
 }
-.loc-note { color: $dim; font-size: 9px; margin-top: 2px; }
+.loc-note { color: $dim; font-size: 11px; margin-top: 2px; }
 
 // ---- keybind cheatsheet ($mod+,) ----
 .cheatsheet-tile {

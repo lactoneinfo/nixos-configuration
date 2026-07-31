@@ -12,7 +12,7 @@ fi
 [ -z "$source" ] && source="no device"
 [ -z "$svol" ] && svol="—"
 [ -z "$mvol" ] && mvol="—"
-# 長すぎるデバイス名は切る
-sink=$(echo "$sink" | cut -c1-24)
-source=$(echo "$source" | cut -c1-24)
+# 長すぎるデバイス名は切る(マルチバイト文字対応のためLC_ALLを明示)
+sink=$(echo "$sink" | LC_ALL=en_US.UTF-8 cut -c1-40)
+source=$(echo "$source" | LC_ALL=en_US.UTF-8 cut -c1-40)
 printf '{"sink":"%s","source":"%s","svol":"%s","mvol":"%s"}\n' "$sink" "$source" "$svol" "$mvol"

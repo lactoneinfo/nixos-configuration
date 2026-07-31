@@ -97,6 +97,9 @@ in
         # クリップボード履歴の収集デーモン(テキスト/画像それぞれ別ウォッチャーが必要)
         "wl-paste --type text --watch cliphist store"
         "wl-paste --type image --watch cliphist store"
+        # fcitx5本体のデーモン。i18n.inputMethod.enableだけではHyprland環境では
+        # 自動起動しない(XDG autostartを処理する仕組みが無いため)。
+        "fcitx5 -d"
       ];
       # VirtualBoxの仮想GPU(vmwgfx)がまともなOpenGLを提供しないため、
       # 実機(ThinkPad)に移った際はこの行ごと削除する想定のVM専用設定。
@@ -232,16 +235,7 @@ in
     };
   };
 
-  # bash: starshipを有効化し、対話起動時にfastfetchでOS情報を表示。
-  programs.bash = {
-    enable = true;
-    initExtra = ''
-      if [ -z "$FASTFETCH_SHOWN" ] && command -v fastfetch >/dev/null 2>&1; then
-        export FASTFETCH_SHOWN=1
-        fastfetch
-      fi
-    '';
-  };
+  programs.bash.enable = true;
 
   # fcitx5のプロファイル: keyboard-us(英字)とmozc(日本語)を同一グループに
   # 登録し、fcitx5-remote -t (Ctrl+Space既定)でこの2つをトグルできるようにする。
@@ -302,13 +296,37 @@ in
     executable = true;
     text = ''
       #!/bin/sh
-      # ?format=%t は "+28°C" のみ(絵文字なし、テキストだけ)。詳細はcockpitのLOCATIONタイル側で。
-      out=$(curl -sf --max-time 8 'https://wttr.in/?format=%t' 2>/dev/null)
-      if [ -z "$out" ]; then
+      # 以前はここで独自にwttr.inを直接叩いていたため、コックピットの
+      # LOCATIONタイル(電話GPS優先、IPフォールバック)と表示温度が食い違っていた。
+      # location.shを共通の情報源として再利用し、値を一致させる。アイコンも付けて
+      # 「PCの温度ではなく外の気温」だと一目でわかるようにする。
+      data=$(bash "$HOME/.config/eww/scripts/location.sh" 2>/dev/null)
+      temp=$(echo "$data" | ${pkgs.jq}/bin/jq -r '.temp // "—"' 2>/dev/null)
+      if [ -z "$temp" ] || [ "$temp" = "—" ]; then
         printf '{"text":"--","tooltip":"weather fetch failed"}\n'
       else
-        printf '{"text":"%s","tooltip":"current weather (wttr.in)"}\n' "$(echo "$out" | tr -s ' ' | sed 's/^ *//;s/ *$//')"
+        printf '{"text":"󰖙 %s°C","tooltip":"outside temperature (same source as cockpit LOCATION tile)"}\n' "$temp"
       fi
+    '';
+  };
+
+  # 気温の右に簡易的な再生中表示(曲名+音楽アイコン)。何も再生していなければ空表示。
+  home.file.".local/bin/waybar-media.sh" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      status=$(${pkgs.playerctl}/bin/playerctl status 2>/dev/null)
+      if [ -z "$status" ]; then
+        printf '{"text":"","tooltip":""}\n'
+        exit 0
+      fi
+      # waybarはこのスクリプトをUTF-8ロケール未設定の環境で起動することがあり、
+      # その場合cut -cが日本語等マルチバイト文字の途中でバイト単位に切って
+      # 不正なUTF-8になり、waybar(GTK markup)ごとクラッシュした実例がある。
+      # LC_ALLを明示してcutに文字単位で切らせることで回避する。
+      title=$(${pkgs.playerctl}/bin/playerctl metadata title 2>/dev/null | LC_ALL=en_US.UTF-8 cut -c1-24)
+      artist=$(${pkgs.playerctl}/bin/playerctl metadata artist 2>/dev/null)
+      printf '{"text":"♪ %s","tooltip":"%s - %s"}\n' "$title" "$title" "$artist"
     '';
   };
 
@@ -385,15 +403,74 @@ in
       hyprctl dispatch workspace 9
 
       if ! pgrep -f "foot.*claude" >/dev/null 2>&1; then
-        foot -D "$VAULT" claude &
+        setsid foot -D "$VAULT" claude >/tmp/agent-foot.log 2>&1 < /dev/null &
+        disown
       fi
       sleep 0.5
 
+      # obsidianはElectron製で、Ozoneプラットフォームを明示しないとXWaylandを
+      # 要求してこのVMでは"Missing X server or $DISPLAY"で即落ちる。
       if ! pgrep -x obsidian >/dev/null 2>&1; then
-        obsidian "obsidian://open?path=$(printf '%s' "$VAULT" | sed 's/\//%2F/g')" &
+        setsid env ELECTRON_OZONE_PLATFORM_HINT=wayland obsidian --ozone-platform=wayland \
+          "obsidian://open?path=$(printf '%s' "$VAULT" | sed 's/\//%2F/g')" \
+          >/tmp/agent-obsidian.log 2>&1 < /dev/null &
+        disown
       fi
     '';
   };
+
+  # アプリケーションマネージャー(ランチャー)からクリックして起動した場合も
+  # 上と同じOzone/Waylandフラグが効くよう、.desktopファイル自体を上書きする。
+  # XDG的にはユーザーの~/.local/share/applications側が/run/current-system側
+  # (パッケージ同梱の素の.desktop、フラグ無し)より優先されるため、これで
+  # ランチャー経由の起動でもXWaylandクラッシュを回避できる。
+  # 実例: SpotifyはこのフラグなしだとXWayland依存で描画しようとし、
+  # このVM(WLR_RENDERER=pixmanのソフトレンダ)ではXWaylandがクラッシュして
+  # ウィンドウが一切出ない(プロセスは起動するが無反応に見える、2026-08-01発覚)。
+  home.file.".local/share/applications/spotify.desktop".text = ''
+    [Desktop Entry]
+    Type=Application
+    Name=Spotify
+    GenericName=Music Player
+    Icon=spotify-client
+    TryExec=spotify
+    Exec=spotify --enable-features=UseOzonePlatform --ozone-platform=wayland --enable-wayland-ime %U
+    Terminal=false
+    MimeType=x-scheme-handler/spotify;
+    Categories=Audio;Music;Player;AudioVideo;
+    StartupWMClass=spotify
+  '';
+  home.file.".local/share/applications/obsidian.desktop".text = ''
+    [Desktop Entry]
+    Categories=Office
+    Comment=Knowledge base
+    Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland obsidian --ozone-platform=wayland %u
+    Icon=obsidian
+    MimeType=x-scheme-handler/obsidian
+    Name=Obsidian
+    Type=Application
+    Version=1.4
+  '';
+  # discord/slackもElectron製で同じXWaylandの罠を踏むため、Spotify/Obsidianと
+  # 同様にOzone/Waylandフラグ付きで上書きする。zoom-usはQtベースなので対象外。
+  home.file.".local/share/applications/discord.desktop".text = ''
+    [Desktop Entry]
+    Name=Discord
+    Comment=All-in-one voice and text chat for gamers
+    Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland discord --ozone-platform=wayland %U
+    Icon=discord
+    Type=Application
+    Categories=Network;InstantMessaging;
+  '';
+  home.file.".local/share/applications/slack.desktop".text = ''
+    [Desktop Entry]
+    Name=Slack
+    Comment=Slack Desktop
+    Exec=env ELECTRON_OZONE_PLATFORM_HINT=wayland slack --ozone-platform=wayland -s %U
+    Icon=slack
+    Type=Application
+    Categories=Network;InstantMessaging;
+  '';
 
   home.file.".local/bin/windows-switch.sh" = {
     executable = true;
@@ -417,7 +494,7 @@ in
     ADDON_DIR="$HOME/.local/share/Anki2/addons21/2055492159"
     if [ ! -d "$ADDON_DIR" ]; then
       ${pkgs.curl}/bin/curl -sL --max-time 15 "https://ankiweb.net/shared/download/2055492159" -o /tmp/ankiconnect.ankiaddon 2>/dev/null || true
-      # 罠: ankiweb.net/shared/downloadへの直curlは"Your version of Anki is too old."
+      # ankiweb.net/shared/downloadへの直curlは"Your version of Anki is too old."
       # という32バイトのテキストを返すことがある(バージョン確認パラメータが必要)。
       # 中身が本物のzip(先頭"PK")か確認してから展開する——確認せず展開すると
       # 空のアドオンフォルダが残り、Anki自体が起動時にクラッシュする原因になった。
@@ -559,7 +636,8 @@ in
         min-height: 0;
       }
       window#waybar {
-        background-color: transparent;
+        /* 不透過でよいが真っ黒だと単調なので、黒系のまま少し明るいトーンに。 */
+        background-color: #1a1c28;
         color: #${fg};
       }
       /* 各モジュールを「浮いた島(ピル)」にする共通スタイル */
@@ -572,7 +650,8 @@ in
       #pulseaudio,
       #network,
       #battery,
-      #custom-weather {
+      #custom-weather,
+      #custom-media {
         background-color: #${bg};
         padding: 2px 12px;
         margin: 4px 3px;
@@ -588,6 +667,7 @@ in
       #cpu, #memory, #temperature { color: #${sakura}; }
       #pulseaudio { color: #${amber}; }
       #custom-weather { color: #${sky}; }
+      #custom-media { color: #${sakura}; }
 
       /* 入力モード: 日本語(あ)はピンク発光、英字(A)は控えめ */
       #custom-ime.jp {
@@ -625,7 +705,7 @@ in
         position = "top";
         height = 34;
         margin-top = 0;
-        modules-left = [ "hyprland/workspaces" "custom/weather" ];
+        modules-left = [ "hyprland/workspaces" "custom/weather" "custom/media" ];
         modules-center = [ "clock" ];
         # backlight/batteryはデバイスが無ければ自動的に表示されない
         # (VMでは出ない、実機ThinkPadで有効になる想定)。
@@ -686,6 +766,14 @@ in
           return-type = "json";
           interval = 900;
         };
+        "custom/media" = {
+          exec = "~/.local/bin/waybar-media.sh";
+          return-type = "json";
+          interval = 3;
+          # クリックで再生/一時停止トグル、右クリックで次の曲。
+          on-click = "${pkgs.playerctl}/bin/playerctl play-pause";
+          on-click-right = "${pkgs.playerctl}/bin/playerctl next";
+        };
       };
     };
   };
@@ -731,7 +819,7 @@ in
 
   # 一定時間放置での自動ロック/サスペンド。5分放置→ロック、15分放置→サスペンド
   # (サスペンド前には必ずロックしてから眠る、が定石)。
-  # 罠: hyprlockはVM(pixmanソフトレンダ)だとハードウェアGLでの描画を試みて
+  # hyprlockはVM(pixmanソフトレンダ)だとハードウェアGLでの描画を試みて
   # "invalid arguments for wl_surface.attach"で即クラッシュする。
   # LIBGL_ALWAYS_SOFTWARE=1でソフトウェアGLに強制すると回避できる
   # (実機のGLレンダラに移す際はこのenv指定を外してよい)。

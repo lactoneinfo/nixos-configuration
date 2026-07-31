@@ -12,7 +12,7 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # claude-code/obsidianがunfreeライセンスのため個別に許可(全体はallowUnfree=trueにしない)
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" ];
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" "discord" "zoom" "slack" ];
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -109,7 +109,7 @@
   };
 
   # PowerPoint/行政書類/AviUtl等Windows専用ソフト用のWindows VM基盤(libvirt/QEMU)。
-  # 罠: このVM自体がVirtualBox上のネストされたゲストで、ホストWindowsでHyper-Vが
+  # このVM自体がVirtualBox上のネストされたゲストで、ホストWindowsでHyper-Vが
   # 有効(検出済み)なため、VirtualBoxのネストHW仮想化(nested-hw-virt=on にはした)
   # を経由してもさらにその中でKVMを使う「三重ネスト」は実質サポート外——/dev/kvmが
   # 生成されずTCG(ソフトウェアエミュレーション)頼みで極めて低速になる。実機の
@@ -184,6 +184,10 @@
     claude-code    # 左画面のチャット本体(初回はログインが要る、認証は代行できない)
     obsidian       # 右画面。home NAS上の実vault(/mnt/obsidian)を直接開く
     spotify        # 音楽再生(cockpitのNOW PLAYING+audio waveform動作確認用)
+
+    discord        # ボイスチャット
+    zoom-us        # ビデオ会議
+    slack          # チームチャット
   ];
 
   system.stateVersion = "25.05";

@@ -1,10 +1,12 @@
 { pkgs, lib, ... }:
 
 {
-  # 自宅サーバーのIP/共有名など個人情報を含む設定は、このgit管理下のファイルには
-  # 一切書かず /etc/nixos/private-hosts.nix (このVM/実機にだけ手動で置く、
+  # 自宅サーバーのIP/共有名など個人情報を含む設定は、このgit管理下のflakeソースには
+  # 一切書かず /etc/nixos-private/private-hosts.nix (このVM/実機にだけ手動で置く、
   # publicリポジトリには絶対に含めないファイル)に分離する。存在すれば取り込む。
-  imports = lib.optional (builtins.pathExists ./private-hosts.nix) ./private-hosts.nix;
+  # 絶対パス指定なのは、flakeがgitリポジトリの場合git-tracked-onlyフィルタが掛かり
+  # 相対パス(./private-hosts.nix)だとuntrackedファイルがflakeソースから見えなくなるため。
+  imports = lib.optional (builtins.pathExists /etc/nixos-private/private-hosts.nix) /etc/nixos-private/private-hosts.nix;
 
   # flakeを使うための必須設定(デフォルトでは無効な実験的機能)
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -57,7 +59,9 @@
   systemd.tmpfiles.rules = [
     "d /var/log/regreet 0755 greeter greeter -"
   ];
-  environment.etc."greetd/sakura.jpg".source = ./sakura.jpg;
+  # 壁紙: 出典不明のネット拾い画像のためgit管理外。/etc/nixos-private/sakura.jpg に
+  # 各自好きな画像を同名で置くこと(絶対パス参照、理由は上の private-hosts.nix と同じ)。
+  environment.etc."greetd/sakura.jpg".source = /etc/nixos-private/sakura.jpg;
   environment.etc."greetd/regreet.toml".text = ''
     [background]
     path = "/etc/greetd/sakura.jpg"

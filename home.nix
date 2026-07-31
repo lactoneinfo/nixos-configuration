@@ -33,6 +33,9 @@ in
         "$mod, Return, exec, foot"
         "$mod, Q, killactive"
         "$mod, M, exit"
+        # アプリランチャー(インストール済みアプリの.desktopをwofiのdrunモードで検索起動。
+        # 例: ここでfirefoxと打ってEnter)
+        "$mod, SPACE, exec, wofi --show drun"
         # コックピットを開く時はHyprlandのsubmap(モード切替)に入る。
         # submap中は下のextraConfigで明示的に許可したキー(D/Escape)以外
         # 全く反応しない——footを含め他のキーバインドは構造的に発火し得ない。
@@ -675,9 +678,10 @@ in
     };
   };
 
-  # 壁紙: sakura.jpg は出典不明な拾い画像のためgit管理外(.gitignore)。
-  # ビルド前にリポジトリ直下へ好きな画像を同名で置くこと。
-  home.file."Pictures/sakura.jpg".source = ./sakura.jpg;
+  # 壁紙: sakura.jpg は出典不明な拾い画像のためgit管理外。/etc/nixos-private/sakura.jpg に
+  # 各自好きな画像を同名で置くこと(絶対パス参照、flakeがgitの場合の
+  # git-tracked-onlyフィルタを避けるため。詳細はcommon.nixの同種コメント参照)。
+  home.file."Pictures/sakura.jpg".source = /etc/nixos-private/sakura.jpg;
 
   # 画面ロック(実機で人前に置くなら必須。今までは無くて離席時に開きっぱなしだった)。
   # 夜桜壁紙+同じ配色で、cockpit/greetdログイン画面とトーンを合わせている。

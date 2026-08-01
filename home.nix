@@ -113,6 +113,12 @@ in
       # scaleが不定になるとeww/waybarの描画が拡大バグる。実機では ",preferred,auto,1" に。
       monitor = ",1279x799@60,0x0,1";
 
+      input = {
+        kb_layout = "jp";
+        kb_variant = "";
+        kb_model = "jp106";
+      };
+
       general = {
         gaps_in = 4;
         gaps_out = 8;
@@ -172,6 +178,7 @@ in
       submap = cockpit
       bind = , D, exec, eww close cockpit && hyprctl dispatch submap reset
       bind = , escape, exec, eww close cockpit && hyprctl dispatch submap reset
+      bind = CTRL, R, exec, echo x > /tmp/eww-speedtest-trigger
       submap = reset
 
       submap = cheatsheet
@@ -237,28 +244,6 @@ in
 
   programs.bash.enable = true;
 
-  # fcitx5のプロファイル: keyboard-us(英字)とmozc(日本語)を同一グループに
-  # 登録し、fcitx5-remote -t (Ctrl+Space既定)でこの2つをトグルできるようにする。
-  # パッケージを入れただけでは有効化されない(fcitx5-configtoolでのGUI設定が
-  # 前提の項目)ため、宣言的にprofileファイル自体を書いて再現性を確保する。
-  home.file.".config/fcitx5/profile".text = ''
-    [Groups/0]
-    Name=Default
-    Default Layout=us
-    DefaultIM=keyboard-us
-
-    [Groups/0/Items/0]
-    Name=keyboard-us
-    Layout=
-
-    [Groups/0/Items/1]
-    Name=mozc
-    Layout=
-
-    [GroupOrder]
-    0=Default
-  '';
-
   # コックピット(eww)の設定一式をデプロイ。recursiveで各ファイルを個別リンク。
   home.file.".config/eww" = {
     source = ./eww;
@@ -296,11 +281,7 @@ in
     executable = true;
     text = ''
       #!/bin/sh
-      # 以前はここで独自にwttr.inを直接叩いていたため、コックピットの
-      # LOCATIONタイル(電話GPS優先、IPフォールバック)と表示温度が食い違っていた。
-      # location.shを共通の情報源として再利用し、値を一致させる。アイコンも付けて
-      # 「PCの温度ではなく外の気温」だと一目でわかるようにする。
-      data=$(bash "$HOME/.config/eww/scripts/location.sh" 2>/dev/null)
+      data=$(cat /tmp/eww-location-cache.json 2>/dev/null)
       temp=$(echo "$data" | ${pkgs.jq}/bin/jq -r '.temp // "—"' 2>/dev/null)
       if [ -z "$temp" ] || [ "$temp" = "—" ]; then
         printf '{"text":"--","tooltip":"weather fetch failed"}\n'
@@ -842,6 +823,22 @@ in
       preload = [ "~/Pictures/sakura.jpg" ];
       wallpaper = [ ",~/Pictures/sakura.jpg" ];
     };
+  };
+
+  systemd.user.services.eww-location = {
+    Unit.Description = "location.sh cache refresh";
+    Service = {
+      Type = "oneshot";
+      ExecStart = "${pkgs.bash}/bin/bash %h/.config/eww/scripts/location.sh";
+    };
+  };
+  systemd.user.timers.eww-location = {
+    Unit.Description = "location.sh cache refresh timer";
+    Timer = {
+      OnStartupSec = "10s";
+      OnUnitActiveSec = "900s";
+    };
+    Install.WantedBy = [ "timers.target" ];
   };
 
   programs.home-manager.enable = true;

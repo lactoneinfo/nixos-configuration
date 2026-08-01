@@ -48,12 +48,8 @@ $glassBorder: rgba(255,255,255,0.14);
   margin-top: 4px;
 }
 
-// 背景色が完全に未指定だとGTKがクリック判定を持つGdkWindowを割り当てず、
-// :onclickが反応しないことがある。透明でも背景色を明示しておく。
-.retry-btn { margin-top: 4px; background-color: rgba(0,0,0,0.001); padding: 2px 4px; }
-.retry-icon { color: $sky; font-size: 22px; font-weight: bold; }
-.retry-text { color: $sky; font-size: 10px; font-weight: bold; }
-.retry-btn:hover .retry-icon, .retry-btn:hover .retry-text { color: $sakura; }
+// Ctrl+Rキーバインドの説明表記(クリック不要、Hyprlandのcockpit submapで処理)。
+.retry-hint { color: $sky; font-size: 10px; font-weight: bold; margin-top: 4px; }
 
 .tile-title {
   color: $sakura;

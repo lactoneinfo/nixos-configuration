@@ -22,10 +22,16 @@ if [ -f "$PHONE_LOC" ]; then
   fi
 fi
 
+CACHE="/tmp/eww-location-cache.json"
+
 url="https://wttr.in/${QUERY}?format=j1"
 data=$(curl -sf --max-time 8 "$url" 2>/dev/null)
 if [ -z "$data" ]; then
-  printf '{"source":"none","city":"unavailable","temp":"—","desc":"—","feels":"—","icon":"weather-na"}\n'
+  if [ -s "$CACHE" ]; then
+    cat "$CACHE"
+  else
+    printf '{"source":"none","city":"unavailable","temp":"—","desc":"—","feels":"—","icon":"weather-na"}\n'
+  fi
   exit 0
 fi
 city=$(echo "$data" | jq -r '.nearest_area[0].areaName[0].value // "Unknown"' 2>/dev/null)
@@ -48,4 +54,4 @@ esac
 loc="$city"
 [ -n "$region" ] && loc="$city, $region"
 printf '{"source":"%s","city":"%s","temp":"%s","desc":"%s","feels":"%s","icon":"%s"}\n' \
-  "$source" "$loc" "$temp" "$desc" "$feels" "$icon"
+  "$source" "$loc" "$temp" "$desc" "$feels" "$icon" | tee "$CACHE"

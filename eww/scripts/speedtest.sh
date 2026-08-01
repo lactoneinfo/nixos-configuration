@@ -11,7 +11,8 @@ run_once() {
     printf '{"ping":"—","down":"—","up":"—","ok":0,"ts":"%s"}\n' "$(date +%H:%M)"
     return
   fi
-  ping=$(echo "$out" | awk '/^Ping/{printf "%.0f", $2}')
+  ping=$(ping -c1 -W1 8.8.8.8 2>/dev/null | awk -F'time=' '/time=/{print int($2)}')
+  [ -z "$ping" ] && ping="—"
   down=$(echo "$out" | awk '/^Download/{printf "%.0f", $2}')
   up=$(echo "$out" | awk '/^Upload/{printf "%.0f", $2}')
   printf '{"ping":"%s","down":"%s","up":"%s","ok":1,"ts":"%s"}\n' "$ping" "$down" "$up" "$(date +%H:%M)"

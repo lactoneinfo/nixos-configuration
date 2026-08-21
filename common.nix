@@ -21,7 +21,11 @@ in
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # claude-code/obsidianがunfreeライセンスのため個別に許可(全体はallowUnfree=trueにしない)
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" "discord" "zoom" "slack" "vscode" ];
+  # steamは本体だけでなくsteam-unwrapped/steam-run等の派生パッケージ名でも
+  # unfreeチェックに引っかかるため、個別列挙ではなく前方一致で丸ごと許可する。
+  nixpkgs.config.allowUnfreePredicate = pkg:
+    builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" "discord" "zoom" "slack" "vscode" ]
+    || lib.hasPrefix "steam" (lib.getName pkg);
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";
@@ -150,6 +154,15 @@ in
   # 存在せず動かない問題への定番対策。ダイナミックリンカのシムを提供する。
   programs.nix-ld.enable = true;
 
+  # Steam(Phase 1: 軽いゲーム動作確認向け)。32bit互換ライブラリ・udevルール等は
+  # このモジュールが自動で面倒を見る。remotePlay/dedicatedServerのファイア
+  # ウォール開放はまだ使う予定が無いので有効化しない(情報ミニマリスト方針)。
+  programs.steam = {
+    enable = true;
+    remotePlay.openFirewall = false;
+    dedicatedServer.openFirewall = false;
+  };
+
   # NetworkManager(2026-08-22追記: 以前「common.nixに追加済み」とメモリに記録していたが
   # 実際には入っておらず、実機Wi-Fiが自動接続しない原因になっていた。VMはVirtualBox NAT
   # DHCPで動いていたためこの欠落に気付けなかった)
@@ -192,6 +205,7 @@ in
     cifs-utils     # home NASのSMB共有マウント(Obsidian vault/Zotero)
     iw             # WiFi SSID取得(INTERNETタイル)
     networkmanager_dmenu  # WiFi一覧をwofiで選んで即接続(テザリング/未知の環境向け、tray常駐は不採用)
+    powertop       # 消費電力モニタ(Super+Bのpower-menuから起動)。tlp-statはservices.tlpが自動導入
 
     # クリップボード履歴
     wl-clipboard   # wl-copy/wl-paste(Wayland版クリップボード操作)

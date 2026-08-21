@@ -437,6 +437,7 @@
         (kb :combo "Super + I" :desc "勉強/インプット画面")
         (kb :combo "Super + Shift + A" :desc "選択単語をAnkiへ登録")
         (kb :combo "Super + A" :desc "AIエージェント作業画面")
+        (kb :combo "Super + B" :desc "電力/バッテリー状態メニュー")
         (kb :combo "Super + Shift + R" :desc "デーモン自己修復"))
       (box :orientation "v" :space-evenly false :spacing 4
         (kb :combo "Print" :desc "スクショ(範囲+注釈)")

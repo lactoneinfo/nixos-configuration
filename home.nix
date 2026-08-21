@@ -82,6 +82,10 @@ in
 
         # AIエージェント作業画面(左Claude Code・右Obsidianグラフビュー)へ切替
         "$mod, A, exec, ~/.local/bin/agent-workspace.sh"
+
+        # 電力/バッテリー状態メニュー(tlp-stat・powertopのコマンドを覚えなくて
+        # 済むようにwofiでメニュー化。アプリランチャーからも同じ物を起動可能)
+        "$mod, B, exec, ~/.local/bin/power-menu.sh"
       ]
       # ワークスペース切替(Hyprlandのデフォルト例設定相当だが、この設定は
       # ゼロから組んだためこれまで一切定義されていなかった)。
@@ -94,6 +98,15 @@ in
       bindm = [
         "$mod, mouse:272, movewindow"
         "$mod, mouse:273, resizewindow"
+      ];
+      # ThinkPadのFnキー(F1ミュート・F2/F3音量・F5/F6輝度)。"e"フラグは
+      # 押しっぱなしでの連続発火(リピート)、"l"フラグは画面ロック中でも効かせる。
+      bindel = [
+        ", XF86AudioMute, exec, wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"
+        ", XF86AudioLowerVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"
+        ", XF86AudioRaiseVolume, exec, wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"
+        ", XF86MonBrightnessDown, exec, brightnessctl set 5%-"
+        ", XF86MonBrightnessUp, exec, brightnessctl set 5%+"
       ];
       # hyprpaper/waybar/fcitx5/ewwの起動は1本のオーケストレーションスクリプトに
       # 一本化(存在確認・待機・リトライ込み)。「再起動したら少し待てば全部正常に
@@ -386,6 +399,37 @@ in
   # 右=Obsidianのグラフビュー(同じ実vaultを開く、ノートを編集するとリアルタイムで
   # グラフに反映される)。Hyprlandのデフォルトdwindleレイアウトが2枚を自動で
   # 左右分割するので、Ankiタイルのような座標合わせのworkaroundは不要。
+  # tlp-stat/powertopを毎回打たなくていいように、wofiで選ぶだけのメニュー化。
+  # Super+Bとアプリランチャー(wofi drun)の両方から同じスクリプトを起動できる。
+  home.file.".local/bin/power-menu.sh" = {
+    executable = true;
+    text = ''
+      #!/bin/sh
+      choice=$(printf '%s\n' \
+        "バッテリー/TLP状態 (tlp-stat)" \
+        "消費電力モニタ (powertop)" \
+        "充電上限を一時変更 (旅行前など)" \
+        | wofi --dmenu --prompt 'Power')
+
+      case "$choice" in
+        バッテリー*)
+          foot sh -c 'sudo tlp-stat -s -b; echo; read -p "Enterで閉じる..." _'
+          ;;
+        消費電力*)
+          foot sudo powertop
+          ;;
+        充電上限*)
+          limit=$(printf '80\n60\n100\n' | wofi --dmenu --prompt '上限%(普段は80、TLPが次回自動で戻す)')
+          case "$limit" in
+            80|60|100)
+              foot sh -c "echo $limit | sudo tee /sys/class/power_supply/BAT0/charge_control_end_threshold >/dev/null; echo '上限を$limit%に変更しました(次回のTLP実行で80%に戻ります)'; read -p 'Enterで閉じる...' _"
+              ;;
+          esac
+          ;;
+      esac
+    '';
+  };
+
   home.file.".local/bin/agent-workspace.sh" = {
     executable = true;
     text = ''
@@ -802,6 +846,18 @@ in
     icon = "network-wireless";
     terminal = false;
     categories = [ "Network" "System" ];
+  };
+
+  # tlp-stat/powertopをコマンドとして覚えなくていいように、wofi drun
+  # (アプリランチャー、Super+SPACE)からも"Battery / Power"として起動可能にする。
+  xdg.desktopEntries.power-menu = {
+    name = "Battery / Power";
+    genericName = "電力・バッテリー状態";
+    comment = "TLP状態・消費電力モニタ・充電上限を確認/変更";
+    exec = "/home/${username}/.local/bin/power-menu.sh";
+    icon = "battery";
+    terminal = false;
+    categories = [ "System" ];
   };
 
   home.file."Pictures/sakura.jpg".source = sakuraWallpaper;

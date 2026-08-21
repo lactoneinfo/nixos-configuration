@@ -21,7 +21,7 @@ in
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
 
   # claude-code/obsidianがunfreeライセンスのため個別に許可(全体はallowUnfree=trueにしない)
-  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" "discord" "zoom" "slack" ];
+  nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (lib.getName pkg) [ "claude-code" "obsidian" "spotify" "discord" "zoom" "slack" "vscode" ];
 
   time.timeZone = "Asia/Tokyo";
   i18n.defaultLocale = "en_US.UTF-8";

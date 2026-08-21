@@ -187,6 +187,45 @@ in
   # home NAS上のObsidian vault / Zoteroライブラリのマウント設定自体は
   # private-hosts.nix側(git管理外)に書く。ここではcifs-utilsの導入のみ。
 
+  # /mnt/obsidianはx-systemd.automountなので、本来は「最初にアクセスした時」
+  # まで実マウントされない(仕様通り)。eww(disk.sh)の15秒ポーリングが偶然の
+  # warm-upになっていたが、Tailscale確立(WiFi→DHCP→tailscaled認証→MagicDNS)
+  # に間に合わない日があり、ログイン直後にObsidianを開くと空/未接続に見える
+  # 事故が起きた。Obsidian vaultは必須機能のため、ログイン画面をブロックせず
+  # (実機isVM=falseのみ・自宅外でも起動は止めない)、かつeww頼みにせず、
+  # ネットワーク確立を検知した直後に能動的にマウントを叩きに行く。
+  systemd.services.mnt-obsidian-warmup = lib.mkIf (!isVM) {
+    description = "Tailscale確立直後に/mnt/obsidianを能動マウント";
+    after = [ "network-online.target" "tailscaled.service" ];
+    wants = [ "network-online.target" ];
+    wantedBy = [ "multi-user.target" ];
+    serviceConfig = {
+      Type = "oneshot";
+      RemainAfterExit = true;
+    };
+    # 自宅外などNASに永久に届かない環境でも起動シーケンスを止めたくないので、
+    # 最終的には必ずexit 0(失敗ユニットとして赤くしない)。実マウントの成否は
+    # `findmnt`で見る — automount有効時はマウント前でもmountpoint自体はautofsで
+    # 「存在」してしまうため、mountpointコマンドでの判定は誤検知する。
+    script = ''
+      for i in $(seq 1 20); do
+        ${pkgs.tailscale}/bin/tailscale status >/dev/null 2>&1 && break
+        sleep 3
+      done
+
+      for i in $(seq 1 20); do
+        fstype=$(${pkgs.util-linux}/bin/findmnt -no FSTYPE /mnt/obsidian 2>/dev/null || true)
+        if [ -n "$fstype" ] && [ "$fstype" != "autofs" ]; then
+          exit 0
+        fi
+        ${pkgs.systemd}/bin/systemctl reset-failed mnt-obsidian.mount 2>/dev/null || true
+        ${pkgs.systemd}/bin/systemctl start mnt-obsidian.mount 2>/dev/null || true
+        sleep 15
+      done
+      exit 0
+    '';
+  };
+
   environment.systemPackages = with pkgs; [
     git
     vim

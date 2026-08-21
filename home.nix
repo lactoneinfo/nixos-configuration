@@ -848,5 +848,10 @@ in
     Install.WantedBy = [ "timers.target" ];
   };
 
+  # Claude Code拡張機能自体はnixpkgsのvscode-extensionsに存在しない(同名の別物
+  # "Cline"(saoudrizwan.claude-dev)はあるが違う)ため、VSCode内から手動インストール
+  # する唯一の例外として扱う。VSCode本体・設定はここで宣言的に管理(2026-08-22)。
+  programs.vscode.enable = true;
+
   programs.home-manager.enable = true;
 }

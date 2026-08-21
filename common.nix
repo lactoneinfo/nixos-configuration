@@ -1,5 +1,14 @@
 { pkgs, lib, isVM ? false, ... }:
 
+let
+  # 壁紙(桜、kabekin.comより)。画像バイナリ自体はネット拾い物で出典が明確でないため
+  # コミットせず、URL+ハッシュだけをgit管理下に置いてビルド時にfetchurlで取得する
+  # (URL文字列自体は著作物ではないので公開リポジトリに残しても問題ない)。
+  sakuraWallpaper = pkgs.fetchurl {
+    url = "https://kabekin.com/uploads/converted/21/03/12/1435226321-cherryblossomsinkyoto-GZGy-1920x1080-MM-100.jpg";
+    sha256 = "cc5a200153f5de78458be986b98f5260bc1a81f29515b8b901ef1210a849e456";
+  };
+in
 {
   # 自宅サーバーのIP/共有名など個人情報を含む設定は、このgit管理下のflakeソースには
   # 一切書かず /etc/nixos-private/private-hosts.nix (このVM/実機にだけ手動で置く、
@@ -70,9 +79,7 @@
   systemd.tmpfiles.rules = [
     "d /var/log/regreet 0755 greeter greeter -"
   ];
-  # 壁紙: 出典不明のネット拾い画像のためgit管理外。/etc/nixos-private/sakura.jpg に
-  # 各自好きな画像を同名で置くこと(絶対パス参照、理由は上の private-hosts.nix と同じ)。
-  environment.etc."greetd/sakura.jpg".source = /etc/nixos-private/sakura.jpg;
+  environment.etc."greetd/sakura.jpg".source = sakuraWallpaper;
   environment.etc."greetd/regreet.toml".text = ''
     [background]
     path = "/etc/greetd/sakura.jpg"

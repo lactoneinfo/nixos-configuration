@@ -11,6 +11,13 @@ let
   amberDim = "rgba(232,181,107,0.2)";   # amber ~20%
   amberMid = "rgba(232,181,107,0.53)";  # amber ~53%
   fgDim = "rgba(246,238,243,0.47)";     # fg ~47%
+
+  # 壁紙(桜、kabekin.comより)。common.nixのgreetd壁紙と同一ソース。
+  # URL+ハッシュのみgit管理下(画像バイナリ自体は出典不明のためコミットしない)。
+  sakuraWallpaper = pkgs.fetchurl {
+    url = "https://kabekin.com/uploads/converted/21/03/12/1435226321-cherryblossomsinkyoto-GZGy-1920x1080-MM-100.jpg";
+    sha256 = "cc5a200153f5de78458be986b98f5260bc1a81f29515b8b901ef1210a849e456";
+  };
 in
 {
   home.username = username;
@@ -762,10 +769,7 @@ in
     };
   };
 
-  # 壁紙: sakura.jpg は出典不明な拾い画像のためgit管理外。/etc/nixos-private/sakura.jpg に
-  # 各自好きな画像を同名で置くこと(絶対パス参照、flakeがgitの場合の
-  # git-tracked-onlyフィルタを避けるため。詳細はcommon.nixの同種コメント参照)。
-  home.file."Pictures/sakura.jpg".source = /etc/nixos-private/sakura.jpg;
+  home.file."Pictures/sakura.jpg".source = sakuraWallpaper;
 
   # 画面ロック(実機で人前に置くなら必須。今までは無くて離席時に開きっぱなしだった)。
   # 夜桜壁紙+同じ配色で、cockpit/greetdログイン画面とトーンを合わせている。

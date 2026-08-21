@@ -171,6 +171,12 @@ in
   # Bluetooth(実機で意味を持つ。VMでは物理アダプタ無しなのでコックピットは
   # 「なし」表示になるだけ。configは実機に移して初めて効く)
   hardware.bluetooth.enable = true;
+  # blueman-manager(新規デバイス検索・ペアリング一式のGUI)。D-Bus越しの
+  # 権限メカニズムも有効になるので、ペアリング操作にsudoは不要。
+  # blueman-manager/blueman-appletの.desktopエントリはパッケージ内蔵なので、
+  # wofi drun(アプリランチャー)から自動的に見えるようになる——個別に
+  # xdg.desktopEntriesを書く必要はない。
+  services.blueman.enable = true;
 
   # Tailscale(コックピットで接続状況を出す。VMでは未ログイン=Stopped表示)
   services.tailscale.enable = true;

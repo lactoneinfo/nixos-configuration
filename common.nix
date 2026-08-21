@@ -227,6 +227,10 @@ in
     firefox        # ブラウザ(Discord画面共有等の動作確認にも使用)
 
     virt-viewer    # windows-switch.shがVMドメインに接続する際に使う
+    moonlight-qt   # 自宅デスクトップ(poyagalleria, Sunshineホスト)へGPUストリーミング
+                   # 接続してAviUtl編集をリモート操作するため。Hyprland(Wayland)だと
+                   # 稀にストリームウィンドウが初回起動しないバグ報告あり——発生したら
+                   # QT_QPA_PLATFORM=xcb を付けて起動する回避策がある(2026-08-02調査済み)。
 
     anki           # 単語帳(AnkiConnectアドオン経由でスクリプトから登録)
     unzip          # AnkiConnectアドオンの.ankiaddon(zip形式)展開に使用

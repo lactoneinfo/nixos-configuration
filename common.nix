@@ -27,6 +27,17 @@ in
   i18n.defaultLocale = "en_US.UTF-8";
   console.keyMap = "jp106";
 
+  # ElectronアプリはデフォルトだとXWayland経由で動き、fcitx5のWaylandフロントエンド
+  # (下記waylandFrontend=true)と噛み合わずIME入力が効かない。NIXOS_OZONE_WLを立てると
+  # nixpkgs版Electronアプリが自動でネイティブWayland起動フラグを付けてくれる、
+  # NixOS+Wayland+Electronの定番Fix(VSCodeで日本語入力/JP配列が効かない問題、2026-08-22)。
+  environment.sessionVariables = {
+    NIXOS_OZONE_WL = "1";
+    GTK_IM_MODULE = "fcitx";
+    QT_IM_MODULE = "fcitx";
+    XMODIFIERS = "@im=fcitx";
+  };
+
   # 日本語入力(fcitx5 + mozc)。waybar側で「あ/A」の状態を読んで表示する。
   i18n.inputMethod = {
     enable = true;

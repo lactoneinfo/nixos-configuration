@@ -735,6 +735,10 @@ in
           format-ethernet = "NET online";
           format-disconnected = "NET offline";
           tooltip-format = "{ifname}: {ipaddr}";
+          # クリックでWiFi一覧をwofiで表示、選ぶだけで接続(テザリング/未知の
+          # 環境向け)。tray常駐アイコンは見た目が浮くとの指摘で不採用、
+          # 既存のwofiテーマ(クリップボード履歴と共通)にそのまま乗る形にした。
+          on-click = "networkmanager_dmenu";
         };
         battery = {
           format = "BAT {capacity}%";
@@ -767,6 +771,37 @@ in
         };
       };
     };
+  };
+
+  # WiFi一覧ピッカー(networkmanager_dmenu)。waybarのnetworkモジュールのクリックと、
+  # wofi drun(アプリランチャー)の両方から起動できるようにする。
+  xdg.configFile."networkmanager-dmenu/config.ini".text = ''
+    [dmenu]
+    dmenu_command = wofi --dmenu
+    highlight = True
+    highlight_fg = #${bg}
+    highlight_bg = #${sakura}
+    highlight_bold = True
+    wifi_chars = ▂▄▆█
+    format = {name}  {sec}  {bars}
+    prompt = WiFi
+
+    [dmenu_passphrase]
+    obscure = True
+
+    [editor]
+    gui_if_available = True
+    gui = nm-connection-editor
+  '';
+
+  xdg.desktopEntries.networkmanager-dmenu = {
+    name = "WiFi";
+    genericName = "ネットワーク接続";
+    comment = "近くのWiFiを選んで接続";
+    exec = "networkmanager_dmenu";
+    icon = "network-wireless";
+    terminal = false;
+    categories = [ "Network" "System" ];
   };
 
   home.file."Pictures/sakura.jpg".source = sakuraWallpaper;

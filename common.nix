@@ -191,6 +191,7 @@ in
     usbutils       # lsusb(DEVICESタイルのUSB検出)
     cifs-utils     # home NASのSMB共有マウント(Obsidian vault/Zotero)
     iw             # WiFi SSID取得(INTERNETタイル)
+    networkmanager_dmenu  # WiFi一覧をwofiで選んで即接続(テザリング/未知の環境向け、tray常駐は不採用)
 
     # クリップボード履歴
     wl-clipboard   # wl-copy/wl-paste(Wayland版クリップボード操作)

@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, isVM ? false, ... }:
 
 {
   # 自宅サーバーのIP/共有名など個人情報を含む設定は、このgit管理下のflakeソースには
@@ -60,8 +60,8 @@
       default_session = {
         # WLR_RENDERER=pixman はVirtualBoxのソフトウェアGPU(vmwgfx)でwlroots系
         # コンポジタが正常動作しない問題への対策(Hyprland側と同じworkaround)。
-        # 実機ノートPCに移す際はこのenv行を削除してよい。
-        command = "${pkgs.util-linux}/bin/setsid env WLR_RENDERER=pixman WLR_NO_HARDWARE_CURSORS=1 ${pkgs.cage}/bin/cage -s -- ${pkgs.greetd.regreet}/bin/regreet -c /etc/greetd/regreet.toml -s /etc/greetd/regreet.css";
+        # 実機(GLレンダラ)ではisVM=falseによりこのenvが付かない。
+        command = "${pkgs.util-linux}/bin/setsid env ${lib.optionalString isVM "WLR_RENDERER=pixman WLR_NO_HARDWARE_CURSORS=1 "}${pkgs.cage}/bin/cage -s -- ${pkgs.greetd.regreet}/bin/regreet -c /etc/greetd/regreet.toml -s /etc/greetd/regreet.css";
         user = "greeter";
       };
     };
@@ -85,20 +85,11 @@
   '';
   environment.etc."greetd/regreet.css".source = ./greetd-theme.css;
 
-  users.users.nixos = {
-    isNormalUser = true;
-    extraGroups = [ "wheel" "video" "input" "libvirtd" ];
-    initialPassword = "nixos";
-  };
-
   services.openssh.enable = true;
 
   # hyprlockの認証に使うPAMサービス定義。これが無いと"/etc/pam.d/hyprlock does
   # not exist"警告と共にsuのPAMスタックにフォールバックし、認証周りが不安定になる。
   security.pam.services.hyprlock = {};
-
-  # 検証用の使い捨てVMなので利便性優先でsudoパスワードを省略
-  security.sudo.wheelNeedsPassword = false;
 
   fonts.packages = with pkgs; [
     nerd-fonts.jetbrains-mono   # アイコン内蔵の等幅フォント(waybarのアイコン用)

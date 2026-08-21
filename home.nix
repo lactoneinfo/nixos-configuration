@@ -1,4 +1,4 @@
-{ pkgs, lib, ... }:
+{ pkgs, lib, username, isVM ? false, ... }:
 
 let
   # 夜桜×モダングラデーション配色(eww.scssと同一パレット、必ず同期させる)
@@ -13,8 +13,8 @@ let
   fgDim = "rgba(246,238,243,0.47)";     # fg ~47%
 in
 {
-  home.username = "nixos";
-  home.homeDirectory = "/home/nixos";
+  home.username = username;
+  home.homeDirectory = "/home/${username}";
   home.stateVersion = "25.05";
 
   # デフォルトの派手なXカーソルをやめ、洗練された黒矢印ベースのテーマに。
@@ -58,7 +58,7 @@ in
 
         # 手動ロック(離席時にすぐ画面を隠す用、自動ロックを待たなくていい)。
         # LIBGL_ALWAYS_SOFTWARE=1はVM専用workaround(下のswayidle設定コメント参照)。
-        "$mod, L, exec, env LIBGL_ALWAYS_SOFTWARE=1 hyprlock"
+        "$mod, L, exec, ${if isVM then "env LIBGL_ALWAYS_SOFTWARE=1 " else ""}hyprlock"
 
         # ショートカット一覧(このキー自体も他と被っていないことを確認済み: comma単体は
         # 元々どのバインドにも使われていなかった)
@@ -101,17 +101,18 @@ in
         # 自動起動しない(XDG autostartを処理する仕組みが無いため)。
         "fcitx5 -d"
       ];
-      # VirtualBoxの仮想GPU(vmwgfx)がまともなOpenGLを提供しないため、
-      # 実機(ThinkPad)に移った際はこの行ごと削除する想定のVM専用設定。
-      env = [
+      # VirtualBoxの仮想GPU(vmwgfx)がまともなOpenGLを提供しないため、VMでのみ
+      # ソフトウェアレンダラに固定する(実機はGLレンダラをそのまま使う)。
+      env = (lib.optionals isVM [
         "WLR_RENDERER,pixman"
         "WLR_NO_HARDWARE_CURSORS,1"
+      ]) ++ [
         "XCURSOR_THEME,Bibata-Modern-Classic"
         "XCURSOR_SIZE,22"
       ];
-      # VM専用: フレームバッファに一致する解像度・scale1で固定。
-      # scaleが不定になるとeww/waybarの描画が拡大バグる。実機では ",preferred,auto,1" に。
-      monitor = ",1279x799@60,0x0,1";
+      # VMはフレームバッファに一致する解像度・scale1で固定(scaleが不定だと
+      # eww/waybarの描画が拡大バグる)。実機は自動検出+推奨解像度に任せる。
+      monitor = if isVM then ",1279x799@60,0x0,1" else ",preferred,auto,1";
 
       input = {
         kb_layout = "jp";
@@ -130,10 +131,10 @@ in
       decoration = {
         rounding = 10;
         # VM(pixmanソフトレンダ)ではblurが部分的にしか描画されずパッチ状の
-        # 崩れた見た目になるため無効化。実機(GLレンダラ)では true に戻す
+        # 崩れた見た目になるため無効化。実機(GLレンダラ)では有効にする
         # ——タイルの半透明色だけで「すりガラス感」は既に出ている。
         blur = {
-          enabled = false;
+          enabled = !isVM;
           size = 8;
           passes = 3;
           new_optimizations = true;
@@ -777,8 +778,8 @@ in
       background = [{
         path = "~/Pictures/sakura.jpg";
         # VM(pixmanソフトレンダ)ではblurを付けるとバッファ形式が合わずhyprlock
-        # ごと落ちるため無効化。実機(GLレンダラ)ではblur_passes/blur_sizeを戻してよい。
-        blur_passes = 0;
+        # ごと落ちるため無効化。実機(GLレンダラ)では有効にする。
+        blur_passes = if isVM then 0 else 3;
       }];
       input-field = [{
         size = "300, 60";
@@ -805,15 +806,17 @@ in
   # hyprlockはVM(pixmanソフトレンダ)だとハードウェアGLでの描画を試みて
   # "invalid arguments for wl_surface.attach"で即クラッシュする。
   # LIBGL_ALWAYS_SOFTWARE=1でソフトウェアGLに強制すると回避できる
-  # (実機のGLレンダラに移す際はこのenv指定を外してよい)。
-  services.swayidle = {
+  # (実機のGLレンダラでは不要なため付けない)。
+  services.swayidle = let
+    lockCmd = "${pkgs.util-linux}/bin/setsid env ${lib.optionalString isVM "LIBGL_ALWAYS_SOFTWARE=1 "}${pkgs.hyprlock}/bin/hyprlock";
+  in {
     enable = true;
     timeouts = [
-      { timeout = 300; command = "${pkgs.util-linux}/bin/setsid env LIBGL_ALWAYS_SOFTWARE=1 ${pkgs.hyprlock}/bin/hyprlock"; }
+      { timeout = 300; command = lockCmd; }
       { timeout = 900; command = "systemctl suspend"; }
     ];
     events = [
-      { event = "before-sleep"; command = "${pkgs.util-linux}/bin/setsid env LIBGL_ALWAYS_SOFTWARE=1 ${pkgs.hyprlock}/bin/hyprlock"; }
+      { event = "before-sleep"; command = lockCmd; }
     ];
   };
 

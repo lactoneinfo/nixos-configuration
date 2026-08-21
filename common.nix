@@ -134,6 +134,11 @@ in
   };
   programs.virt-manager.enable = true;
 
+  # nix-ld: VSCode拡張機能などが同梱する「一般的なLinux向けにビルドされた
+  # 動的リンク実行ファイル」がNixOSでは標準の/lib64/ld-linux-x86-64.so.2が
+  # 存在せず動かない問題への定番対策。ダイナミックリンカのシムを提供する。
+  programs.nix-ld.enable = true;
+
   # NetworkManager(2026-08-22追記: 以前「common.nixに追加済み」とメモリに記録していたが
   # 実際には入っておらず、実機Wi-Fiが自動接続しない原因になっていた。VMはVirtualBox NAT
   # DHCPで動いていたためこの欠落に気付けなかった)

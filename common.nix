@@ -134,6 +134,11 @@ in
   };
   programs.virt-manager.enable = true;
 
+  # NetworkManager(2026-08-22追記: 以前「common.nixに追加済み」とメモリに記録していたが
+  # 実際には入っておらず、実機Wi-Fiが自動接続しない原因になっていた。VMはVirtualBox NAT
+  # DHCPで動いていたためこの欠落に気付けなかった)
+  networking.networkmanager.enable = true;
+
   # Bluetooth(実機で意味を持つ。VMでは物理アダプタ無しなのでコックピットは
   # 「なし」表示になるだけ。configは実機に移して初めて効く)
   hardware.bluetooth.enable = true;

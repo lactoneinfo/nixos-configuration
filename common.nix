@@ -197,6 +197,7 @@ in
     # AIエージェント作業画面: 左Claude Codeチャット・右Obsidianグラフビュー
     claude-code    # 左画面のチャット本体(初回はログインが要る、認証は代行できない)
     obsidian       # 右画面。home NAS上の実vault(/mnt/obsidian)を直接開く
+    vscode         # Claude Code拡張機能経由での利用(生CLIでAPIエラーが出たための代替、2026-08-22)
     spotify        # 音楽再生(cockpitのNOW PLAYING+audio waveform動作確認用)
 
     discord        # ボイスチャット

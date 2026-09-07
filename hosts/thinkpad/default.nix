@@ -1,9 +1,15 @@
-{ ... }:
+{ pkgsUnstable, ... }:
 
 {
   imports = [ ./hardware-configuration.nix ];
 
   networking.hostName = "thinkpad";
+
+  # Zotero: 固定nixpkgs(25.05)は7.0.15で、母艦(Windows)のライブラリDB(v10)を
+  # 開けない(古い版は「新しいDBだ」と拒否する)。nixpkgs-unstable側の10系を使う。
+  # データディレクトリは home NAS の SMB共有 /mnt/zotero/Zotero を指す(母艦と
+  # 同時に開かないこと。sqlite over CIFS の破損既往あり)。
+  environment.systemPackages = [ pkgsUnstable.zotero ];
 
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;

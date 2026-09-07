@@ -3,17 +3,23 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    # 一部パッケージだけ新しい版が要るとき用(Zotero等: 固定の25.05側は古すぎて
+    # 母艦のライブラリDBを開けない)。全体は25.05のまま、cherry-pickでのみ使う。
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
     home-manager = {
       url = "github:nix-community/home-manager/release-25.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, home-manager, ... }:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, ... }:
   let
     mkHost = { hostModule, username, isVM }: nixpkgs.lib.nixosSystem {
       system = "x86_64-linux";
-      specialArgs = { inherit isVM; };
+      specialArgs = {
+        inherit isVM;
+        pkgsUnstable = import nixpkgs-unstable { system = "x86_64-linux"; };
+      };
       modules = [
         ./common.nix
         hostModule

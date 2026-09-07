@@ -28,12 +28,25 @@ running() { pgrep -x "$1" >/dev/null 2>&1 || pgrep -x ".$1-wrapped" >/dev/null 2
 #    上がっているはずだが、念のため)
 wait_for "Hyprland IPC" 'hyprctl monitors >/dev/null' 10
 
-# 2. hyprpaperはhome-managerのsystemd --userサービス側に一本化(重複起動を避ける)。
-#    ここでは起動確認だけ行い、動いてなければsystemdサービスを再始動する。
-if ! running hyprpaper; then
-  systemctl --user restart hyprpaper.service 2>>"$LOG"
-  wait_for "hyprpaper" 'running hyprpaper' 10
+# 1b. systemdユーザーマネージャ/dbusに「今のコンポジタ」の環境を再登録する。
+#     nixos-rebuild switchがsession targetをbounceした際、死んだHyprlandプロセスが
+#     WAYLAND_DISPLAYを自分の消えたソケットに書き換えてしまい、systemdサービス側
+#     (mako/swayidle等)がstaleなソケットを掴んで動かなくなる事故があった
+#     (2026-09-07)。このスクリプトはexec-once子なので常に正しい環境を持っている。
+if [ -n "$WAYLAND_DISPLAY" ]; then
+  dbus-update-activation-environment --systemd WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>>"$LOG"
+  systemctl --user import-environment WAYLAND_DISPLAY XDG_CURRENT_DESKTOP HYPRLAND_INSTANCE_SIGNATURE 2>>"$LOG"
 fi
+
+# 2. hyprpaper(壁紙)。waybar/eww/fcitx5と同じく直接子プロセスとして起動する。
+#    systemd --userサービスに載せると上記のstale WAYLAND_DISPLAY問題でcrash loopに
+#    入るため、home.nixのservices.hyprpaperは廃止しconfigだけ置いている
+#    (~/.config/hypr/hyprpaper.conf)。
+if ! running hyprpaper; then
+  setsid hyprpaper >>"$LOG" 2>&1 < /dev/null &
+  disown
+fi
+wait_for "hyprpaper" 'running hyprpaper' 10
 
 # 3. fcitx5(日本語入力)。起動時のデフォルト入力はkeyboard-us(英字)に統一——
 #    fcitx5は最後にアクティブだった入力を記憶して次回のデフォルトにする挙動があり、

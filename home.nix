@@ -117,8 +117,9 @@ in
       ];
       # hyprpaper/waybar/fcitx5/ewwの起動は1本のオーケストレーションスクリプトに
       # 一本化(存在確認・待機・リトライ込み)。「再起動したら少し待てば全部正常に
-      # 戻る」を保証するための仕組み。hyprpaper自体はhome-managerのsystemd --user
-      # サービス側で管理するので、ここに直接は書かない(二重起動を避ける)。
+      # 戻る」を保証するための仕組み。4つとも直接子プロセスとして起動するので
+      # コンポジタの環境を正しく継ぐ(systemdユーザーサービス経由のstale WAYLAND_DISPLAY
+      # 問題を回避)。$mod SHIFT+Rでこのスクリプトを再実行すれば全部復旧する。
       exec-once = [
         "bash ~/.config/eww/scripts/startup.sh"
         # クリップボード履歴の収集デーモン(テキスト/画像それぞれ別ウォッチャーが必要)
@@ -923,13 +924,21 @@ in
     ];
   };
 
-  services.hyprpaper = {
-    enable = true;
-    settings = {
-      preload = [ "~/Pictures/sakura.jpg" ];
-      wallpaper = [ ",~/Pictures/sakura.jpg" ];
-    };
-  };
+  # hyprpaper本体をPATHに載せる(旧services.hyprpaperはサービスのExecStartにだけ
+  # 入れていてPATHには出していなかった。startup.shがbareで起動するので必要)。
+  home.packages = with pkgs; [ hyprpaper ];
+
+  # hyprpaperはstartup.shが直接子プロセスとして起動する(waybar/eww/fcitx5と同じ扱い)。
+  # home-managerのsystemd --userサービスに載せると、nixos-rebuild switchがsession
+  # targetをbounceした際にsystemdユーザーマネージャのWAYLAND_DISPLAYが死んだソケットに
+  # 書き換わり、hyprpaperだけ「No wayland compositor」でcrash loopに入る事故があった
+  # (2026-09-07)。exec-once子プロセスなら常にコンポジタの正しい環境を継ぐ。
+  # configはデフォルトの ~/.config/hypr/hyprpaper.conf を読ませる。
+  home.file.".config/hypr/hyprpaper.conf".text = ''
+    preload = ~/Pictures/sakura.jpg
+    wallpaper = ,~/Pictures/sakura.jpg
+    splash = false
+  '';
 
   systemd.user.services.eww-location = {
     Unit.Description = "location.sh cache refresh";

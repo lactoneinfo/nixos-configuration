@@ -264,6 +264,9 @@ in
     libnotify      # notify-send(スクショ/録画の完了通知)
 
     firefox        # ブラウザ(Discord画面共有等の動作確認にも使用)
+    brave          # ブラウザ(広告・トラッカーブロックのShields内蔵。Chromium系なので
+                   # Hyprlandでフォントがぼやける等あれば ~/.config/brave-flags.conf に
+                   # --ozone-platform-hint=auto を入れる)
 
     virt-viewer    # windows-switch.shがVMドメインに接続する際に使う
     moonlight-qt   # 自宅デスクトップ(poyagalleria, Sunshineホスト)へGPUストリーミング

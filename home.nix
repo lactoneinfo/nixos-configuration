@@ -908,7 +908,8 @@ in
     enable = true;
     timeouts = [
       { timeout = 300; command = lockCmd; }
-      { timeout = 900; command = "systemctl suspend"; }
+      # サスペンドがカーネルレベルでハングすることを実機確認(2026-08-22)したため、
+      # 原因が特定できるまで自動サスペンドは無効化。ロックのみ残す。
     ];
     events = [
       { event = "before-sleep"; command = lockCmd; }

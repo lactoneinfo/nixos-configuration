@@ -86,6 +86,13 @@ in
         # 電力/バッテリー状態メニュー(tlp-stat・powertopのコマンドを覚えなくて
         # 済むようにwofiでメニュー化。アプリランチャーからも同じ物を起動可能)
         "$mod, B, exec, ~/.local/bin/power-menu.sh"
+
+        # フルスクリーン。ゼロから組んだ設定にはフルスクリーン系バインドが
+        # 一切無かった(Hyprlandのデフォルト例には $mainMod,F が入っている)。
+        # $mod,F=waybar含む完全フルスクリーン(集中作業用)、
+        # $mod SHIFT,F=最大化(waybarとgapは残す、モノクル相当)。
+        "$mod, F, fullscreen, 0"
+        "$mod SHIFT, F, fullscreen, 1"
       ]
       # ワークスペース切替(Hyprlandのデフォルト例設定相当だが、この設定は
       # ゼロから組んだためこれまで一切定義されていなかった)。

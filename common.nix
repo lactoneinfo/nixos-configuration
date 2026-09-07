@@ -283,13 +283,6 @@ in
     discord        # ボイスチャット
     zoom-us        # ビデオ会議
     slack          # チームチャット
-
-    # 論文読み(Phase 3)。まずPDFを開いて読める最小構成。文献ライブラリ本体は
-    # home NAS(poyaserver)のZoteroに置いたまま、ThinkPadは読み取り専用でアクセスする
-    # 方針(Zoteroクライアントを2台目で走らせるとsqlite破損の既往があるため——
-    # 詳細は vault: 90_Protocols/memory/reference_zotero-db-corruption-fix)。
-    sioyek         # 論文特化PDFリーダー(参照ジャンプ・図のポータル表示、マウス操作可)
-    poppler_utils  # pdftotext等(あかりが引用の一次確認をするのに使う)
   ];
 
   system.stateVersion = "25.05";

@@ -28,7 +28,9 @@ in
   home.pointerCursor = {
     package = pkgs.bibata-cursors;
     name = "Bibata-Modern-Classic";
-    size = 22;
+    # 実機はモニタscale=1.5。カーソル等の論理pxは全部scaleで1.5倍描画されるため、
+    # 見た目を従来(scale=1時)と揃える値に割り戻してある(22 / 1.5 ≈ 15)。
+    size = 15;
     gtk.enable = true;
   };
 
@@ -136,11 +138,16 @@ in
         "WLR_NO_HARDWARE_CURSORS,1"
       ]) ++ [
         "XCURSOR_THEME,Bibata-Modern-Classic"
-        "XCURSOR_SIZE,22"
+        "XCURSOR_SIZE,15"  # home.pointerCursor.sizeと合わせる(scale1.5割り戻し済み)
       ];
       # VMはフレームバッファに一致する解像度・scale1で固定(scaleが不定だと
-      # eww/waybarの描画が拡大バグる)。実機は自動検出+推奨解像度に任せる。
-      monitor = if isVM then ",1279x799@60,0x0,1" else ",preferred,auto,1";
+      # eww/waybarの描画が拡大バグる)。実機は1920x1200/14インチ(~162dpi)で
+      # 素のscale1だとUIが全体に小さすぎるため、fractional scale 1.5で描画する
+      # (1920/1.5=1280ちょうどで割り切れる。VSCode/ZoteroはネイティブWaylandの
+      # fractional-scale対応なので滲まない)。この副作用でgaps/rounding/フォント等の
+      # 論理px指定が全部1.5倍されるため、下のgeneral/decoration・foot・waybarは
+      # 従来の見た目を保つよう値を1.5で割り戻してある。
+      monitor = if isVM then ",1279x799@60,0x0,1" else ",preferred,auto,1.5";
 
       input = {
         kb_layout = "jp";
@@ -149,21 +156,22 @@ in
       };
 
       general = {
-        gaps_in = 4;
-        gaps_out = 8;
-        border_size = 2;
+        # 値はscale1.5割り戻し済み(従来 gaps_in4/gaps_out8/border2 相当の見た目)。
+        gaps_in = 3;
+        gaps_out = 5;
+        border_size = 1;
         "col.active_border" = "rgba(${sakura}ff) rgba(${sky}ff) 45deg";
         "col.inactive_border" = "rgba(${amber}55)";
       };
 
       decoration = {
-        rounding = 10;
+        rounding = 7;  # 従来10相当(scale1.5割り戻し)
         # VM(pixmanソフトレンダ)ではblurが部分的にしか描画されずパッチ状の
         # 崩れた見た目になるため無効化。実機(GLレンダラ)では有効にする
         # ——タイルの半透明色だけで「すりガラス感」は既に出ている。
         blur = {
           enabled = !isVM;
-          size = 8;
+          size = 5;  # 従来8相当(scale1.5割り戻し)
           passes = 3;
           new_optimizations = true;
           ignore_opacity = true;
@@ -226,9 +234,10 @@ in
     enable = true;
     settings = {
       main = {
-        # ptはpxと違う単位(11pt≈14.7px)——eww/waybarの11pxと見た目を揃えるため8ptに。
-        font = "JetBrainsMono Nerd Font:size=8";
-        pad = "14x14";
+        # 実機はモニタscale=1.5なのでpt/pxとも1.5倍描画される。従来(scale=1)の
+        # 8pt/14px相当の見た目を保つため 8/1.5≈5.3pt、14/1.5≈9px に割り戻し。
+        font = "JetBrainsMono Nerd Font:size=5.3";
+        pad = "9x9";
       };
       cursor.color = "${bg} ${amber}";
       colors = {
@@ -673,9 +682,11 @@ in
   programs.waybar = {
     enable = true;
     style = ''
+      /* 実機はモニタscale=1.5。px指定は全部1.5倍描画されるので、従来(scale=1)の
+         見た目を保つよう主要な寸法を1.5で割り戻してある(font 13->8.67, height 34->23 等)。 */
       * {
         font-family: "JetBrainsMono Nerd Font";
-        font-size: 13px;
+        font-size: 8.67px;
         min-height: 0;
       }
       window#waybar {
@@ -696,9 +707,9 @@ in
       #custom-weather,
       #custom-media {
         background-color: #${bg};
-        padding: 2px 12px;
-        margin: 4px 3px;
-        border-radius: 10px;
+        padding: 1px 8px;
+        margin: 3px 2px;
+        border-radius: 7px;
         border: 1px solid ${amberDim};
       }
       #clock {
@@ -727,11 +738,11 @@ in
       }
       #battery.critical { color: #${bg}; background-color: #${sakura}; }
 
-      #workspaces { padding: 2px 6px; }
+      #workspaces { padding: 1px 4px; }
       #workspaces button {
         color: ${fgDim};
-        padding: 0 6px;
-        border-radius: 8px;
+        padding: 0 4px;
+        border-radius: 5px;
       }
       #workspaces button.active {
         color: #${bg};
@@ -746,7 +757,7 @@ in
       mainBar = {
         layer = "top";
         position = "top";
-        height = 34;
+        height = 23;  # 従来34相当(scale1.5割り戻し)
         margin-top = 0;
         modules-left = [ "hyprland/workspaces" "custom/weather" "custom/media" ];
         modules-center = [ "clock" ];

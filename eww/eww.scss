@@ -48,7 +48,7 @@ $glassBorder: rgba(255,255,255,0.14);
   margin-top: 4px;
 }
 
-// Ctrl+Rキーバインドの説明表記(クリック不要、Hyprlandのcockpit submapで処理)。
+// Super+Ctrl+Rキーバインドの説明表記(クリック不要、Hyprlandのグローバルバインドで処理)。
 .retry-hint { color: $sky; font-size: 10px; font-weight: bold; margin-top: 4px; }
 
 .tile-title {
@@ -62,8 +62,10 @@ $glassBorder: rgba(255,255,255,0.14);
 // 右パネルが画面右端をはみ出す実測不具合の修正(2026-08-01): ラベルの実文字数が
 // GTKの自然サイズを押し上げていた(特にAUDIO CHECKのデバイス名)。min-widthは下限に
 // すぎないため、実コンテンツ側(limit-width)も併せて絞って総幅を画面内に収めている。
-.region-life { min-width: 420px; }
-.hero { min-width: 600px; }
+// 右カラム: 下限のみ。中身(limit-width)を各タイルで絞り、自然幅が
+// これを大きく超えないようにしてある(超えると狭いモニタで右端クリップ)。
+.region-life { min-width: 400px; }
+.hero { min-width: 520px; }
 .hero .kv { font-size: 10px; }
 
 // ---- clock (compact tile, paired with location) ----

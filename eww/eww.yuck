@@ -171,7 +171,7 @@
             (label :class "kv" :halign "start" :hexpand true :text "${d.mount}")
             (label :class "loc-note" :halign "end" :text "${d.used_h}/${d.size_h} ")
             (label :class "kv-num" :halign "end" :text "${d.pct}%"))
-          (pillbar :pct {d.pct} :color1 "#e8b56b" :color2 "#ff9ec7" :trackwidth 360))))))
+          (pillbar :pct {d.pct} :color1 "#e8b56b" :color2 "#ff9ec7" :trackwidth 240))))))
 
 ;; タスクマネージャ同様、CPU/MEMだけでなくディスクI/O(自プロセスの/proc/pid/ioから
 ;; 取得、権限問題なし)も出す。ネットワークだけは別枠(NETWORKタイル側のnetprocs)。
@@ -198,18 +198,18 @@
 (defwidget t_internet []
   (tile :title "INTERNET" :icon "network" :class "${net.online == 'down' ? 'alert' : ''}"
     (box :orientation "v" :space-evenly false :spacing 4
-      (box :orientation "h" :space-evenly false
+      (box :orientation "h" :space-evenly false :spacing 6
         (box :class "healthdot ${net.online == 'up' ? 'up' : 'down'}")
-        (label :class "kv" :halign "start" :hexpand true
-               :text " ${net.kind == 'wifi' ? 'Wi-Fi: ' + net.ssid + ' (' + net.strength + '%)' : 'Wired (' + net.linkspeed + 'Mbps)'}")
-        (label :class "kv-num" :halign "end" :text "${net.lat}ms"))
-      (box :orientation "h" :space-evenly false
-        (label :class "section-h" :halign "start" :hexpand true :text "SPEED TEST")
-        (label :class "retry-hint" :halign "end" :text "Ctrl+R retry"))
+        (label :class "kv" :halign "start" :limit-width 30
+               :text "${net.kind == 'wifi' ? 'Wi-Fi: ' + net.ssid + ' (' + net.strength + '%)' : 'Wired (' + net.linkspeed + 'Mbps)'}")
+        (label :class "kv-num" :halign "start" :text "· ${net.lat}ms"))
+      (box :orientation "h" :space-evenly false :spacing 8
+        (label :class "section-h" :halign "start" :text "SPEED TEST")
+        (label :class "retry-hint" :halign "start" :text "· Super+Ctrl+R"))
       ;; 数値を横並び1行にして縦を圧縮(以前は数値の上に単位が別行だった)。
       ;; last testは数値行に相乗りさせると幅を食いすぎて右カラムが画面端を
       ;; はみ出したため、独立した行に戻す。
-      (box :orientation "h" :space-evenly false :halign "start" :spacing 18
+      (box :orientation "h" :space-evenly false :halign "start" :spacing 12
         (box :orientation "h" :space-evenly false :spacing 4 :valign "center"
           (label :class "speed-num dn" :text "${speedtest.down}")
           (label :class "speed-unit" :text "↓Mbps"))
@@ -219,15 +219,15 @@
         (box :orientation "h" :space-evenly false :spacing 4 :valign "center"
           (label :class "speed-num ping" :text "${speedtest.ping}")
           (label :class "speed-unit" :text "ms ping")))
-      (label :class "loc-note" :halign "start" :limit-width 40
+      (label :class "loc-note" :halign "start" :limit-width 34
              :text "last test @ ${speedtest.ts} · ${net.iface} ${net.ip}")
       (label :class "section-h" :halign "start" :text "LIVE PER-PROCESS (nethogs)")
       (box :orientation "v" :space-evenly false :spacing 1
         (for np in netprocs
-          (box :orientation "h" :space-evenly false
-            (label :class "proc-name" :halign "start" :hexpand true :limit-width 30 :text {np.name})
-            (label :class "proc-disk" :halign "end" :width 70 :text "↓${np.down}B/s")
-            (label :class "net-dn" :halign "end" :width 70 :text "↑${np.up}B/s")))))))
+          (box :orientation "h" :space-evenly false :spacing 6
+            (label :class "proc-name" :halign "start" :hexpand true :limit-width 22 :text {np.name})
+            (label :class "proc-disk" :halign "end" :width 64 :text "↓${np.down}B/s")
+            (label :class "net-dn" :halign "end" :width 64 :text "↑${np.up}B/s")))))))
 
 ;; 横幅いっぱいの独立行として置く前提のレイアウト(region-lifeの他タイルと
 ;; 横並びにすると、AUDIO CHECKと同様に右端マージンが消える不具合が起きるため)。
@@ -237,8 +237,8 @@
     (box :orientation "v" :space-evenly false :spacing 6
       (box :orientation "h" :space-evenly false :spacing 14
         (box :orientation "v" :space-evenly false :spacing 3 :hexpand true
-          (label :class "media-title" :halign "start" :limit-width 34 :text {media.title})
-          (label :class "media-artist" :halign "start" :limit-width 34
+          (label :class "media-title" :halign "start" :limit-width 26 :text {media.title})
+          (label :class "media-artist" :halign "start" :limit-width 26
                  :text "${media.artist != '' ? media.artist : media.player}")
           (label :class "media-status" :halign "start"
                  :text "${media.status == 'Playing' ? '󰏤 Playing' : media.status == 'Paused' ? '󰐊 Paused' : '󰓛 Stopped'}"))
@@ -248,20 +248,21 @@
                  :image-width 56 :image-height 56)))
       (box :orientation "h" :space-evenly false :spacing 6
         (label :class "media-time" :text {media.pos_fmt})
-        (pillbar :pct {media.pct} :color1 "#8fb8e8" :color2 "#ff9ec7" :trackwidth 300)
+        (pillbar :pct {media.pct} :color1 "#8fb8e8" :color2 "#ff9ec7" :trackwidth 220)
         (label :class "media-time" :text {media.len_fmt})))))
 
-;; 同じく横幅いっぱいの独立行前提。IN|OUTを横並びにしてスペースを稼ぐ。
+;; IN/OUTは縦積み(旧: 横並び2列×44字でタイル自然幅が~580pxに膨れ、右カラムが
+;; どのモニタ幅でも端をはみ出す原因になっていた)。
 (defwidget t_audio []
   (tile :title "AUDIO CHECK" :icon "audio"
-    (box :orientation "h" :space-evenly true :spacing 14
-      (box :orientation "v" :space-evenly false :spacing 1 :hexpand true
-        (label :class "kv" :halign "start" :limit-width 44 :text "IN  ${audio.source} (${audio.mvol}%)")
-        (graph :class "wave in" :height 34 :thickness 2
+    (box :orientation "v" :space-evenly false :spacing 4
+      (box :orientation "v" :space-evenly false :spacing 1
+        (label :class "kv" :halign "start" :limit-width 40 :text "IN  ${audio.source} (${audio.mvol}%)")
+        (graph :class "wave in" :height 30 :thickness 2 :hexpand true
                :value cava_in :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round"))
-      (box :orientation "v" :space-evenly false :spacing 1 :hexpand true
-        (label :class "kv" :halign "start" :limit-width 44 :text "OUT ${audio.sink} (${audio.svol}%)")
-        (graph :class "wave out" :height 34 :thickness 2
+      (box :orientation "v" :space-evenly false :spacing 1
+        (label :class "kv" :halign "start" :limit-width 40 :text "OUT ${audio.sink} (${audio.svol}%)")
+        (graph :class "wave out" :height 30 :thickness 2 :hexpand true
                :value cava_out :time-range "8s" :min 0 :max 100 :dynamic false :line-style "round")))))
 
 (defwidget t_loc []
@@ -341,30 +342,34 @@
 
 ;; ---------------- bento layout ----------------
 ;; Left = PC telemetry cluster, Right = ambient/life cluster.
+;; ウィンドウ自体はモニタを埋める(width/height 100%)。中身はこのscrollで包み、
+;; 縦横どちらにも入り切らないモニタでは切り取らずスクロールで逃がす
+;; (VM 1279x799・実機scale1.25で eDP 1536x960・外部 1536x864 など、どのサイズでも破綻しない)。
 (defwidget cockpit []
-  (box :class "cockpit" :vexpand true :hexpand true :valign "center" :halign "fill"
-    (box :orientation "h" :space-evenly false :spacing 12 :hexpand true
-      ;; --- left: PC cluster ---
-      (box :class "region-sys" :orientation "v" :space-evenly false :spacing 10 :hexpand true
-        (t_sys)
-        (box :orientation "h" :space-evenly true :spacing 10
-          (t_perf)
-          (t_disk))
-        (box :orientation "h" :space-evenly true :spacing 10
-          (t_proc)
-          (t_devices))
-        (box :orientation "h" :space-evenly true :spacing 10
-          (t_health)
-          (t_bluetooth)))
-      ;; --- right: ambient cluster ---
-      (box :class "region-life" :orientation "v" :space-evenly false :spacing 10
-        (box :orientation "h" :space-evenly true :spacing 10
-          (t_clock)
-          (t_loc))
-        (t_internet)
-        (t_private_net)
-        (t_media)
-        (t_audio)))))
+  (box :class "cockpit" :vexpand true :hexpand true :valign "fill" :halign "fill"
+    (scroll :vscroll true :hscroll true :vexpand true :hexpand true
+      (box :orientation "h" :space-evenly false :spacing 12 :hexpand true :valign "start"
+        ;; --- left: PC cluster ---
+        (box :class "region-sys" :orientation "v" :space-evenly false :spacing 10 :hexpand true
+          (t_sys)
+          (box :orientation "h" :space-evenly true :spacing 10
+            (t_perf)
+            (t_disk))
+          (box :orientation "h" :space-evenly true :spacing 10
+            (t_proc)
+            (t_devices))
+          (box :orientation "h" :space-evenly true :spacing 10
+            (t_health)
+            (t_bluetooth)))
+        ;; --- right: ambient cluster ---
+        (box :class "region-life" :orientation "v" :space-evenly false :spacing 10 :hexpand true
+          (box :orientation "h" :space-evenly true :spacing 10
+            (t_clock)
+            (t_loc))
+          (t_internet)
+          (t_private_net)
+          (t_media)
+          (t_audio))))))
 
 ;; ---------------- study/input screen ($mod+I) ----------------
 (defpoll til :interval "600s" :initial "[]" `bash scripts/reddit-til.sh`)
@@ -408,7 +413,7 @@
 
 (defwindow study
   :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "1279px" :height "799px" :anchor "center")
+  :geometry (geometry :x "0" :y "0" :width "100%" :height "100%" :anchor "center")
   :stacking "fg"
   :exclusive false
   :focusable false
@@ -451,18 +456,18 @@
 
 (defwindow cheatsheet
   :monitor 0
-  :geometry (geometry :x "0" :y "0" :width "1279px" :height "799px" :anchor "center")
+  :geometry (geometry :x "0" :y "0" :width "100%" :height "100%" :anchor "center")
   :stacking "fg"
   :exclusive false
   :focusable false
   (cheatsheet))
 
+;; 表示先モニタは開くとき --screen で指定する(home.nixの$mod+Dバインドが
+;; フォーカス中のモニタ名を渡す)。ここでの :monitor は未指定時のフォールバック。
+;; サイズはモニタ実寸に追従(width/height 100%)。中身側のscrollが溢れを吸収する。
 (defwindow cockpit
   :monitor 0
-  ;; yはwaybarの排他領域(34px)が自動加算された上での相対値
-  ;; (実測: 指定40pxが実際は74pxになる=+34のズレ)。上の余白を減らすため0pxにし、
-  ;; 浮いた分をheightに回して下まで使い切るようにする。
-  :geometry (geometry :x "0" :y "0px" :width "1279px" :height "759px" :anchor "top left")
+  :geometry (geometry :x "0" :y "0" :width "100%" :height "100%" :anchor "center")
   :stacking "fg"
   :exclusive false
   :focusable false

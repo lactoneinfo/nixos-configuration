@@ -38,6 +38,14 @@ in
     enable = true;
     settings = {
       "$mod" = "SUPER";
+
+      # 蓋を閉じたら即ロック。bindl = ロック中/inhibit中でも効く bind。
+      # logind (lidSwitch=lock) → swayidle の lock イベント経由でもロックするが、
+      # それが不発だった実例 (2026-09-10) を受けて Hyprland 側でも直接拾う。
+      # hyprlock は単一インスタンスガードがあるので二重発火しても無害。
+      bindl = [
+        ", switch:on:Lid Switch, exec, ${if isVM then "env LIBGL_ALWAYS_SOFTWARE=1 " else ""}hyprlock"
+      ];
       bind = [
         "$mod, Return, exec, foot"
         "$mod, Q, killactive"
@@ -165,8 +173,8 @@ in
         kb_layout = "jp";
         kb_variant = "";
         kb_model = "jp106";
-        # ポインタが少し速く感じたため素の速さから気持ち落としてある(範囲 -1.0〜1.0、0が素)。
-        sensitivity = -0.2;
+        # ポインタが速く感じるため素の速さから落としてある(範囲 -1.0〜1.0、0が素)。
+        sensitivity = -0.4;
       };
 
       general = {
@@ -941,6 +949,11 @@ in
     ];
     events = [
       { event = "before-sleep"; command = lockCmd; }
+      # 蓋を閉じる / loginctl lock-session で logind が Lock シグナルを出す。
+      # lidSwitch="lock" はシグナルを出すだけで、listen する側がいないと何も
+      # 起きない (2026-09-10「蓋閉じてもロックされない」で発覚)。ここで拾う。
+      { event = "lock"; command = lockCmd; }
+      { event = "unlock"; command = "${pkgs.procps}/bin/pkill hyprlock"; }
     ];
   };
 

@@ -165,6 +165,8 @@ in
         kb_layout = "jp";
         kb_variant = "";
         kb_model = "jp106";
+        # ポインタが少し速く感じたため素の速さから気持ち落としてある(範囲 -1.0〜1.0、0が素)。
+        sensitivity = -0.2;
       };
 
       general = {

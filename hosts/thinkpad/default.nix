@@ -1,4 +1,4 @@
-{ pkgsUnstable, ... }:
+{ pkgs, pkgsUnstable, ... }:
 
 {
   imports = [ ./hardware-configuration.nix ];
@@ -19,6 +19,11 @@
   # デフォルトはremount-ro機能しか許可されていない(NixOS標準)。個人単独機なので
   # フル機能を許可しても実害は無い(物理アクセスできる前提のリスクは元々ある)。
   boot.kernel.sysctl."kernel.sysrq" = 1;
+
+  # kernel 6.12 (stable) では suspend/hibernate がこの Ryzen AI 300 (Krackan Point) で
+  # 全滅する (詳細は下の電源管理コメント)。amdgpu の対応が新しい最新カーネルへ。
+  # pkgs.linuxPackages_latest = pinned nixpkgs(25.05)内の 6.18 系 (unstable 混入なし)。
+  boot.kernelPackages = pkgs.linuxPackages_latest;
 
   # === 電源管理 (2026-09-10 実機フォレンジック、現状) ===
   # この機種(T14 Gen6 / Ryzen AI 5 PRO 340, Radeon 840M, kernel 6.12.63)の症状:

@@ -111,8 +111,12 @@
       WIFI_PWR_ON_AC = "off";
       WIFI_PWR_ON_BAT = "on";
 
-      # バッテリー劣化防止(ThinkPad標準のcharge threshold、80%止めが定石)
-      START_CHARGE_THRESH_BAT0 = 40;
+      # バッテリー劣化防止(ThinkPad標準のcharge threshold、80%止めが定石)。
+      # STARTは60: 40フロアだと「50%前後で挿しても充電が始まらず、そのまま
+      # 持ち出して低残量スタート」になる。60-80帯に居座らせても平均SoCが
+      # 約10pt上がるだけで、リチウムイオンのカレンダー劣化差は6年で数%の誤差。
+      # 充電開始の回数(=マイクロ充電)は劣化要因ではない。
+      START_CHARGE_THRESH_BAT0 = 60;
       STOP_CHARGE_THRESH_BAT0 = 80;
     };
   };

@@ -20,38 +20,64 @@
   # フル機能を許可しても実害は無い(物理アクセスできる前提のリスクは元々ある)。
   boot.kernel.sysctl."kernel.sysrq" = 1;
 
-  # kernel 6.12 (stable) では suspend/hibernate がこの Ryzen AI 300 (Krackan Point) で
-  # 全滅する (詳細は下の電源管理コメント)。amdgpu の対応が新しい最新カーネルへ。
-  # pkgs.linuxPackages_latest = pinned nixpkgs(25.05)内の 6.18 系 (unstable 混入なし)。
-  boot.kernelPackages = pkgs.linuxPackages_latest;
-
-  # === 電源管理 (2026-09-10 実機フォレンジック、現状) ===
-  # この機種(T14 Gen6 / Ryzen AI 5 PRO 340, Radeon 840M, kernel 6.12.63)の症状:
+  # === 電源管理 (2026-09-10、ハイバネート実装は打ち切り・上流待ち) ===
+  # この機種(T14 Gen6 / Ryzen AI 5 PRO 340, Radeon 840M, Krackan Point)は
+  # 「蓋を閉じたら省電力」が Linux 側の未成熟で現状どうやっても成立しない:
   #   - /sys/power/mem_sleep が s2idle のみ (ACPIが S0 S4 S5 しか出さない=本物のS3が無い)。
-  #     s2idle はカーネルごとハングする既往 (2026-08-22)。封印中。
-  #   - ハイバネートも全パターンでハング (2026-08-22 ×2, 2026-09-10 ×3):
-  #       * HibernateMode=platform (既定): デバイス退避は全ドライバ正常完了 (pm_test=devices で
-  #         往復3.98秒)、最終段の ACPI ファームウェア S4 遷移で ETIMEDOUT ロールバック or 完全ハング。
-  #       * HibernateMode=shutdown (下記設定): さらに手前、"PM: hibernation entry" の直後・
-  #         プロセスfreezeより前で沈黙。console prep か PM notifier 段。
-  #     → 犯人は個別デバイスドライバではなく、amdgpu のハイバネート対応 or カーネルの
-  #        ハイバネート入口処理。BIOS は 1.20 が LVFS 最新 (更新なし)。次の一手は
-  #        kernel 6.12 → 最新 (6.18+) で amdgpu の Krackan Point 対応を新しくすること。
-  #        詳細経緯: 90_Protocols/memory/project_new-laptop-plan.md
+  #     s2idle はカーネルごとハングする既往 (2026-08-22 ×2)。
+  #   - ハイバネート(S4)も全パターンでカーネルハング (2026-09-10 に実機フォレンジック、×3):
+  #       * デバイス個別の suspend/resume コールバックは全ドライバ正常 (pm_test=devices、
+  #         往復3.98秒)。犯人は個別ドライバではない。
+  #       * HibernateMode=platform (既定): 最終段の ACPI ファームウェア S4 遷移で
+  #         ETIMEDOUT ロールバック or 完全ハング。
+  #       * HibernateMode=shutdown: さらに手前、"PM: hibernation entry" 直後・
+  #         プロセスfreezeより前 (PM notifier 段、amdgpu のハイバネート準備が最有力) で沈黙。
+  #       * kernel 6.12 → 6.18.2 に上げても寸分違わず同じ場所でハング。
+  #   - BIOS 1.20 が LVFS 最新 (fwupd 有効化済み、更新なし)。
+  #   - これは我々固有ではなく上流の既知問題: 同じ Krackan の Framework 13 AMD で
+  #     「Hibernation never works」「AMDGPU refuses to wake after sleep/hibernate」
+  #     「MES timeouts (gfx1152)」等のスレッドが多数。2025年 AMD APU 世代の
+  #     amdgpu + プラットフォームファームウェアの成熟待ち。
+  #     詳細経緯: 90_Protocols/memory/project_new-laptop-plan.md
   #
-  # 現状の安全策: 蓋を閉じても suspend/hibernate せず lock のみ (画面OFF+施錠、待機電力は
-  # アイドル相当で流れる)。自動でスリープ系を叩くものは全て無効。
-  # HibernateMode=shutdown は「いずれ直った時にこの機種の正しい選択 (S3が無いので
-  # platform経路は使わない)」なので設定は残すが、現時点で解決策ではない。
-  systemd.sleep.extraConfig = ''
-    HibernateMode=shutdown
-  '';
+  # 結論 (2026-09-10): 蓋閉じ = lock のみ (画面はハードウェアでバックライトOFF、
+  # 施錠。待機電力は実測 3〜5W = アイドル相当が流れ続ける)。自動でスリープ系を
+  # 叩くものは全て無効。バッテリー干上がり防止に下の lid-close-poweroff を併用。
+  # 再挑戦は kernel 6.19+ / T14 BIOS 更新が出た時点で (台帳の todo)。
   services.logind.lidSwitch = "lock";
   services.logind.lidSwitchExternalPower = "lock";
 
-  # ハイバネート(ディスクへの退避)用のswapfile。この機種は/sys/power/mem_sleepが
-  # s2idleのみ(本当のS3が無い)でサスペンド中のバッテリー消費が大きめなので、
-  # 蓋を閉じて長時間放置した時の保険として用意する。
+  # 蓋を閉じたまま1時間経ったらクリーンシャットダウン (上記の待機電力対策)。
+  # /proc/acpi/button/lid/LID/state を60秒間隔でポーリング。蓋を開ければタイマーは
+  # リセット。「閉じて数時間の外出」は 11〜18h 持つので影響なし、「一晩〜週末
+  # 閉じっぱなし」でバッテリーが死ぬケースだけを潰す (セッションは失う)。
+  systemd.services.lid-close-poweroff = {
+    description = "Power off after the lid has stayed closed for 1 hour";
+    wantedBy = [ "multi-user.target" ];
+    path = [ pkgs.coreutils pkgs.gnugrep pkgs.systemd ];
+    serviceConfig = {
+      Restart = "always";
+      RestartSec = 10;
+    };
+    script = ''
+      closed_since=
+      while true; do
+        if grep -q closed /proc/acpi/button/lid/LID/state 2>/dev/null; then
+          now=$(date +%s)
+          if [ -z "$closed_since" ]; then closed_since=$now; fi
+          if [ $(( now - closed_since )) -ge 3600 ]; then
+            exec systemctl poweroff
+          fi
+        else
+          closed_since=
+        fi
+        sleep 60
+      done
+    '';
+  };
+
+  # ハイバネート用の swapfile と resume 設定。ハイバネートは現状ハングするが、
+  # 直った時にすぐ使えるよう温存 (未使用なら無害)。
   # RAM実測27GiB+余裕を見て32GiB。root(ext4)上に作るのでresumeDeviceはrootのUUID。
   swapDevices = [{
     device = "/var/lib/swapfile";
